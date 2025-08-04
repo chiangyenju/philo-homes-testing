@@ -20,3 +20,13 @@ __pycache__/
 
 # Exclude 3D models directory
 blender-ops/3d-models/
+
+# 3D model files
+*.glb
+*.obj
+*.fbx
+*.dae
+*.3ds
+*.ply
+*.stl
+*.x3d
