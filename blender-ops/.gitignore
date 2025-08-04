@@ -1,0 +1,12 @@
+# Blender files (too large for GitHub without LFS)
+*.blend
+*.blend1
+*.blend*
+
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+
