@@ -7,6 +7,7 @@ __pycache__/
 *$py.class
 
 # Blender
+*.blend
 *.blend1
 *.blend2
 *.blend3
@@ -16,3 +17,6 @@ __pycache__/
 # Temporary files
 *.tmp
 *.temp
+
+# Exclude 3D models directory
+blender-ops/3d-models/
