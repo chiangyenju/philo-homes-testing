@@ -133,7 +133,7 @@ class PHILO_OT_generate_room(Operator):
 class PHILO_OT_setup_lighting(Operator):
     bl_idname = "philo.setup_lighting"
     bl_label = "Setup Lighting"
-    bl_description = "Setup realistic lighting and effects"
+    bl_description = "Setup photorealistic lighting for furniture visualization"
     bl_options = {'REGISTER', 'UNDO'}
     
     def execute(self, context):
@@ -147,101 +147,295 @@ class PHILO_OT_setup_lighting(Operator):
         # Clear default nodes
         world.node_tree.nodes.clear()
         
-        # Add environment nodes
+        # Simple gradient background
         nodes = world.node_tree.nodes
         links = world.node_tree.links
         
         bg_node = nodes.new(type='ShaderNodeBackground')
         output_node = nodes.new(type='ShaderNodeOutputWorld')
         
-        # Set environment color and strength
-        bg_node.inputs['Color'].default_value = (0.1, 0.1, 0.15, 1)  # Slight blue tint
-        bg_node.inputs['Strength'].default_value = scene.philo_hdri_strength
-        
-        links.new(bg_node.outputs['Background'], output_node.inputs['Surface'])
-        
         # Remove existing lights
         for obj in bpy.data.objects:
             if obj.type == 'LIGHT':
                 bpy.data.objects.remove(obj)
         
-        # Key light (main window light)
-        bpy.ops.object.light_add(type='AREA', location=(-3, 3, 2.5))
-        key_light = context.active_object
-        key_light.name = "Key_Light"
-        key_light.data.size = 2
-        key_light.data.energy = scene.philo_key_light_strength
-        key_light.data.color = (1.0, 0.95, 0.85)  # Warm daylight
-        key_light.rotation_euler = (math.radians(45), math.radians(-45), 0)
-        key_light.data.use_shadow = scene.philo_use_shadows
-        
-        # Fill light (ceiling bounce)
-        bpy.ops.object.light_add(type='AREA', location=(0, 0, 2.8))
-        fill_light = context.active_object
-        fill_light.name = "Fill_Light"
-        fill_light.data.size = 4
-        fill_light.data.energy = scene.philo_fill_light_strength
-        fill_light.data.color = (1.0, 1.0, 1.0)
-        fill_light.rotation_euler = (math.radians(180), 0, 0)
-        fill_light.data.use_shadow = scene.philo_use_shadows
+        # Create lights based on preset
+        if scene.philo_lighting_preset == 'NATURAL':
+            self._setup_natural_lighting(context, scene)
+        elif scene.philo_lighting_preset == 'STUDIO':
+            self._setup_studio_lighting(context, scene)
+        else:  # DRAMATIC
+            self._setup_dramatic_lighting(context, scene)
         
         # Setup render settings
         scene.render.engine = 'CYCLES'
         scene.cycles.device = 'GPU'
         
-        # Apply quality settings
-        quality_settings = {
-            'PREVIEW': {'samples': 64, 'denoising': True},
-            'MEDIUM': {'samples': 256, 'denoising': True},
-            'HIGH': {'samples': 1024, 'denoising': True}
-        }
-        
-        settings = quality_settings[scene.philo_render_quality]
-        scene.cycles.samples = settings['samples']
-        scene.cycles.use_denoising = settings['denoising']
-        
-        # Enhanced light paths for realism
+        # Photorealistic light paths
         scene.cycles.max_bounces = 12
         scene.cycles.diffuse_bounces = 4
         scene.cycles.glossy_bounces = 4
         scene.cycles.transmission_bounces = 12
         scene.cycles.transparent_max_bounces = 8
+        scene.cycles.volume_bounces = 2
         
-        # Color management
+        # Color management for photorealism
         scene.view_settings.view_transform = 'Filmic'
-        scene.view_settings.exposure = scene.philo_exposure
         
-        contrast_map = {
-            'LOW': 'Low Contrast',
-            'MEDIUM': 'Medium Contrast',
-            'HIGH': 'High Contrast'
-        }
-        scene.view_settings.look = contrast_map[scene.philo_contrast]
+        # Apply preset-specific settings
+        if scene.philo_lighting_preset == 'NATURAL':
+            # Natural daylight settings
+            bg_node.inputs['Color'].default_value = (0.85, 0.9, 1.0, 1)
+            bg_node.inputs['Strength'].default_value = 0.3
+            scene.view_settings.exposure = 0.5
+            scene.view_settings.look = 'Medium Contrast'
+            self._setup_natural_effects(scene)
+        elif scene.philo_lighting_preset == 'STUDIO':
+            # Clean studio backdrop
+            bg_node.inputs['Color'].default_value = (0.95, 0.95, 0.95, 1)
+            bg_node.inputs['Strength'].default_value = 0.5
+            scene.view_settings.exposure = 0.0
+            scene.view_settings.look = 'Medium High Contrast'
+            self._setup_studio_effects(scene)
+        else:  # DRAMATIC
+            # Moody dark background
+            bg_node.inputs['Color'].default_value = (0.05, 0.05, 0.08, 1)
+            bg_node.inputs['Strength'].default_value = 0.1
+            scene.view_settings.exposure = -0.5
+            scene.view_settings.look = 'High Contrast'
+            self._setup_dramatic_effects(scene)
         
-        # Bloom effect (compositor)
-        if scene.philo_use_bloom:
-            scene.use_nodes = True
-            tree = scene.node_tree
-            tree.nodes.clear()
-            
-            # Add nodes
-            render_layers = tree.nodes.new('CompositorNodeRLayers')
-            glare = tree.nodes.new('CompositorNodeGlare')
-            composite = tree.nodes.new('CompositorNodeComposite')
-            
-            # Configure bloom
-            glare.glare_type = 'GHOSTS'
-            glare.quality = 'HIGH'
-            glare.threshold = 1.0  # Higher threshold = less bloom on darker areas
-            glare.mix = scene.philo_bloom_intensity
-            glare.size = 7  # Smaller size for tighter bloom
-            
-            # Connect nodes
-            tree.links.new(render_layers.outputs['Image'], glare.inputs['Image'])
-            tree.links.new(glare.outputs['Image'], composite.inputs['Image'])
+        links.new(bg_node.outputs['Background'], output_node.inputs['Surface'])
         
-        self.report({'INFO'}, "Lighting setup complete")
+        self.report({'INFO'}, f"{scene.philo_lighting_preset.title()} lighting setup complete")
         return {'FINISHED'}
+    
+    def _setup_natural_lighting(self, context, scene):
+        """Photorealistic natural daylight for furniture photography"""
+        # Sun light - warm afternoon sun
+        bpy.ops.object.light_add(type='SUN', location=(0, 0, 10))
+        sun = context.active_object
+        sun.name = "Sun_Light"
+        sun.data.energy = 3.0
+        sun.data.angle = math.radians(0.526)  # Soft shadows
+        sun.rotation_euler = (math.radians(55), math.radians(-30), 0)
+        sun.data.color = (1, 0.95, 0.9)  # Warm sunlight
+        
+        # Large window light - main key light
+        bpy.ops.object.light_add(type='AREA', location=(-3.8, 0, 1.5))
+        window = context.active_object
+        window.name = "Window_Light"
+        window.data.shape = 'RECTANGLE'
+        window.data.size = 3
+        window.data.size_y = 2.5
+        window.data.energy = 800
+        window.rotation_euler = (math.radians(90), 0, math.radians(90))
+        window.data.color = (1, 0.98, 0.95)
+        window.data.cycles.is_portal = True
+        
+        # Soft ceiling bounce - fill light
+        bpy.ops.object.light_add(type='AREA', location=(0, 0, 2.95))
+        fill = context.active_object
+        fill.name = "Ceiling_Bounce"
+        fill.data.shape = 'DISK'
+        fill.data.size = 6
+        fill.data.energy = 150
+        fill.data.color = (0.95, 0.97, 1)  # Slightly cool
+        fill.rotation_euler = (math.radians(180), 0, 0)
+        fill.data.use_shadow = False
+        
+        # Subtle rim light from opposite side
+        bpy.ops.object.light_add(type='AREA', location=(3, -2, 2))
+        rim = context.active_object
+        rim.name = "Rim_Light"
+        rim.data.size = 1.5
+        rim.data.energy = 200
+        rim.data.color = (1, 0.97, 0.93)
+        rim.rotation_euler = (math.radians(60), math.radians(45), 0)
+    
+    def _setup_studio_lighting(self, context, scene):
+        """Professional studio lighting for product photography"""
+        # Large softbox key light
+        bpy.ops.object.light_add(type='AREA', location=(-2.5, 2, 3))
+        key = context.active_object
+        key.name = "Softbox_Key"
+        key.data.shape = 'RECTANGLE'
+        key.data.size = 2.5
+        key.data.size_y = 2.5
+        key.data.energy = 1500
+        key.rotation_euler = (math.radians(30), math.radians(-40), 0)
+        key.data.color = (1, 1, 1)  # Pure white
+        
+        # Large fill light - opposite side
+        bpy.ops.object.light_add(type='AREA', location=(3, 1.5, 2.5))
+        fill = context.active_object
+        fill.name = "Fill_Light"
+        fill.data.shape = 'RECTANGLE'
+        fill.data.size = 3
+        fill.data.size_y = 3
+        fill.data.energy = 600
+        fill.rotation_euler = (math.radians(45), math.radians(50), 0)
+        fill.data.color = (1, 1, 1)
+        
+        # Top light for even illumination
+        bpy.ops.object.light_add(type='AREA', location=(0, 0, 3.5))
+        top = context.active_object
+        top.name = "Top_Light"
+        top.data.shape = 'DISK'
+        top.data.size = 2
+        top.data.energy = 400
+        top.rotation_euler = (math.radians(180), 0, 0)
+        top.data.color = (1, 1, 1)
+        
+        # Background light
+        bpy.ops.object.light_add(type='AREA', location=(0, -3.5, 1))
+        bg_light = context.active_object
+        bg_light.name = "Background_Light"
+        bg_light.data.shape = 'RECTANGLE'
+        bg_light.data.size = 4
+        bg_light.data.size_y = 2
+        bg_light.data.energy = 300
+        bg_light.rotation_euler = (math.radians(90), 0, 0)
+        bg_light.data.color = (1, 1, 1)
+    
+    def _setup_dramatic_lighting(self, context, scene):
+        """Dramatic lighting for luxury furniture shots"""
+        # Strong directional spotlight - main key
+        bpy.ops.object.light_add(type='SPOT', location=(-3, -1, 3.5))
+        key = context.active_object
+        key.name = "Dramatic_Key"
+        key.data.energy = 3000
+        key.data.spot_size = math.radians(35)
+        key.data.spot_blend = 0.15
+        key.rotation_euler = (math.radians(40), math.radians(-15), 0)
+        key.data.color = (1, 0.93, 0.86)  # Warm white
+        
+        # Rim light for dramatic edge lighting
+        bpy.ops.object.light_add(type='SPOT', location=(0, -3.5, 2.5))
+        rim = context.active_object
+        rim.name = "Dramatic_Rim"
+        rim.data.energy = 2000
+        rim.data.spot_size = math.radians(40)
+        rim.data.spot_blend = 0.3
+        rim.rotation_euler = (math.radians(120), 0, 0)
+        rim.data.color = (1, 0.85, 0.7)  # Golden rim
+        
+        # Subtle fill to retain detail in shadows
+        bpy.ops.object.light_add(type='AREA', location=(2.5, 2, 1.5))
+        fill = context.active_object
+        fill.name = "Shadow_Fill"
+        fill.data.size = 2
+        fill.data.energy = 100
+        fill.data.color = (0.8, 0.85, 1)  # Cool blue fill
+        fill.rotation_euler = (math.radians(75), math.radians(30), 0)
+        fill.data.use_shadow = False
+        
+        # Accent light on floor
+        bpy.ops.object.light_add(type='AREA', location=(-2, -2, 0.1))
+        accent = context.active_object
+        accent.name = "Floor_Accent"
+        accent.data.shape = 'DISK'
+        accent.data.size = 0.5
+        accent.data.energy = 150
+        accent.data.color = (1, 0.9, 0.75)
+        accent.rotation_euler = (0, 0, 0)
+    
+    def _setup_natural_effects(self, scene):
+        """Setup effects for natural lighting preset"""
+        scene.use_nodes = True
+        tree = scene.node_tree
+        tree.nodes.clear()
+        
+        # Base nodes
+        render_layers = tree.nodes.new('CompositorNodeRLayers')
+        
+        # Subtle bloom for sun highlights
+        glare = tree.nodes.new('CompositorNodeGlare')
+        glare.glare_type = 'FOG_GLOW'
+        glare.quality = 'HIGH'
+        glare.threshold = 2.5
+        glare.mix = 0.03
+        glare.size = 8
+        
+        # Slight vignette
+        vignette_mix = tree.nodes.new('CompositorNodeMixRGB')
+        vignette_mix.blend_type = 'MULTIPLY'
+        vignette_mix.inputs['Fac'].default_value = 0.15
+        
+        ellipse = tree.nodes.new('CompositorNodeEllipseMask')
+        ellipse.width = 0.9
+        ellipse.height = 0.9
+        ellipse.mask_type = 'NOT'
+        
+        invert = tree.nodes.new('CompositorNodeInvert')
+        
+        # Connect nodes
+        composite = tree.nodes.new('CompositorNodeComposite')
+        tree.links.new(render_layers.outputs['Image'], glare.inputs['Image'])
+        tree.links.new(glare.outputs['Image'], vignette_mix.inputs['Image'])
+        tree.links.new(ellipse.outputs['Mask'], invert.inputs['Color'])
+        tree.links.new(invert.outputs['Color'], vignette_mix.inputs['Image'])
+        tree.links.new(vignette_mix.outputs['Image'], composite.inputs['Image'])
+    
+    def _setup_studio_effects(self, scene):
+        """Setup effects for studio lighting preset"""
+        scene.use_nodes = True
+        tree = scene.node_tree
+        tree.nodes.clear()
+        
+        # Base nodes
+        render_layers = tree.nodes.new('CompositorNodeRLayers')
+        
+        # Very subtle bloom for highlights
+        glare = tree.nodes.new('CompositorNodeGlare')
+        glare.glare_type = 'GHOSTS'
+        glare.quality = 'HIGH'
+        glare.threshold = 3.0
+        glare.mix = 0.01
+        glare.size = 7
+        
+        # Connect nodes
+        composite = tree.nodes.new('CompositorNodeComposite')
+        tree.links.new(render_layers.outputs['Image'], glare.inputs['Image'])
+        tree.links.new(glare.outputs['Image'], composite.inputs['Image'])
+    
+    def _setup_dramatic_effects(self, scene):
+        """Setup effects for dramatic lighting preset"""
+        scene.use_nodes = True
+        tree = scene.node_tree
+        tree.nodes.clear()
+        
+        # Base nodes
+        render_layers = tree.nodes.new('CompositorNodeRLayers')
+        
+        # Strong bloom for light sources
+        glare = tree.nodes.new('CompositorNodeGlare')
+        glare.glare_type = 'GHOSTS'
+        glare.quality = 'HIGH'
+        glare.threshold = 1.5
+        glare.mix = 0.05
+        glare.size = 8
+        glare.color_modulation = 0.3
+        
+        # Strong vignette
+        vignette_mix = tree.nodes.new('CompositorNodeMixRGB')
+        vignette_mix.blend_type = 'MULTIPLY'
+        vignette_mix.inputs['Fac'].default_value = 0.4
+        
+        ellipse = tree.nodes.new('CompositorNodeEllipseMask')
+        ellipse.width = 0.7
+        ellipse.height = 0.7
+        ellipse.mask_type = 'NOT'
+        
+        invert = tree.nodes.new('CompositorNodeInvert')
+        
+        # Connect nodes
+        composite = tree.nodes.new('CompositorNodeComposite')
+        tree.links.new(render_layers.outputs['Image'], glare.inputs['Image'])
+        tree.links.new(glare.outputs['Image'], vignette_mix.inputs['Image'])
+        tree.links.new(ellipse.outputs['Mask'], invert.inputs['Color'])
+        tree.links.new(invert.outputs['Color'], vignette_mix.inputs['Image'])
+        tree.links.new(vignette_mix.outputs['Image'], composite.inputs['Image'])
 
 def get_object_bounds(obj):
     """Get the bounding box of an object in world space"""
@@ -578,13 +772,35 @@ class PHILO_OT_render_snapshot(Operator):
     bl_options = {'REGISTER', 'UNDO'}
     
     def execute(self, context):
+        scene = context.scene
+        
         # Ensure camera exists
-        if not context.scene.camera:
+        if not scene.camera:
             bpy.ops.philo.setup_camera()
+        
+        # Apply quality settings before rendering
+        quality_settings = {
+            'PREVIEW': {'samples': 64, 'denoising': True},
+            'MEDIUM': {'samples': 256, 'denoising': True},
+            'HIGH': {'samples': 1024, 'denoising': True}
+        }
+        
+        settings = quality_settings[scene.philo_render_quality]
+        scene.cycles.samples = settings['samples']
+        scene.cycles.use_denoising = settings['denoising']
+        
+        # Additional quality settings
+        if scene.philo_render_quality == 'HIGH':
+            scene.cycles.denoiser = 'OPENIMAGEDENOISE'
+            scene.cycles.denoising_input_passes = 'RGB_ALBEDO_NORMAL'
+        else:
+            scene.cycles.denoiser = 'OPENIMAGEDENOISE'
+            scene.cycles.denoising_input_passes = 'RGB_ALBEDO'
         
         # Start render
         bpy.ops.render.render('INVOKE_DEFAULT')
         
+        self.report({'INFO'}, f"Rendering with {settings['samples']} samples")
         return {'FINISHED'}
 
 class PHILO_OT_add_collision(Operator):

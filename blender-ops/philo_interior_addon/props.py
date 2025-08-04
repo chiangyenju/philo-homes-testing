@@ -2,70 +2,16 @@ import bpy
 from bpy.props import StringProperty, FloatProperty, EnumProperty, BoolProperty, IntProperty
 
 def register():
-    # Lighting properties
-    bpy.types.Scene.philo_hdri_strength = FloatProperty(
-        name="Environment Strength",
-        description="Strength of HDRI lighting",
-        default=0.5,
-        min=0.0,
-        max=5.0
-    )
-    
-    bpy.types.Scene.philo_key_light_strength = FloatProperty(
-        name="Key Light Power",
-        description="Main light intensity",
-        default=1000,
-        min=0,
-        max=10000
-    )
-    
-    bpy.types.Scene.philo_fill_light_strength = FloatProperty(
-        name="Fill Light Power",
-        description="Fill light intensity",
-        default=300,
-        min=0,
-        max=5000
-    )
-    
-    bpy.types.Scene.philo_use_shadows = BoolProperty(
-        name="Enable Shadows",
-        description="Enable shadow rendering",
-        default=True
-    )
-    
-    # Effects properties
-    bpy.types.Scene.philo_use_bloom = BoolProperty(
-        name="Bloom Effect",
-        description="Add glow to bright areas",
-        default=True
-    )
-    
-    bpy.types.Scene.philo_bloom_intensity = FloatProperty(
-        name="Bloom Intensity",
-        description="Strength of bloom effect",
-        default=0.02,
-        min=0.0,
-        max=0.5,
-        precision=3
-    )
-    
-    bpy.types.Scene.philo_exposure = FloatProperty(
-        name="Exposure",
-        description="Overall brightness adjustment",
-        default=0.0,
-        min=-5.0,
-        max=5.0
-    )
-    
-    bpy.types.Scene.philo_contrast = EnumProperty(
-        name="Contrast",
-        description="Color contrast level",
+    # Lighting preset
+    bpy.types.Scene.philo_lighting_preset = EnumProperty(
+        name="Lighting Preset",
+        description="Photorealistic lighting setups",
         items=[
-            ('LOW', 'Low', 'Low contrast for soft look'),
-            ('MEDIUM', 'Medium', 'Balanced contrast'),
-            ('HIGH', 'High', 'High contrast for dramatic look'),
+            ('NATURAL', 'Natural', 'Warm daylight through windows'),
+            ('STUDIO', 'Studio', 'Clean product photography lighting'),
+            ('DRAMATIC', 'Dramatic', 'Moody luxury furniture lighting'),
         ],
-        default='MEDIUM'
+        default='NATURAL'
     )
     
     # Import properties
@@ -146,14 +92,7 @@ def register():
     )
 
 def unregister():
-    del bpy.types.Scene.philo_hdri_strength
-    del bpy.types.Scene.philo_key_light_strength
-    del bpy.types.Scene.philo_fill_light_strength
-    del bpy.types.Scene.philo_use_shadows
-    del bpy.types.Scene.philo_use_bloom
-    del bpy.types.Scene.philo_bloom_intensity
-    del bpy.types.Scene.philo_exposure
-    del bpy.types.Scene.philo_contrast
+    del bpy.types.Scene.philo_lighting_preset
     del bpy.types.Scene.philo_model_path
     del bpy.types.Scene.philo_folder_path
     del bpy.types.Scene.philo_floor_material

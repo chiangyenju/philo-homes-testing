@@ -51,33 +51,26 @@ class PHILO_PT_lighting_panel(Panel):
         layout = self.layout
         scene = context.scene
         
+        # Lighting preset
+        box = layout.box()
+        box.label(text="Lighting Style:", icon='LIGHT')
+        box.prop(scene, "philo_lighting_preset", text="")
+        
+        # Preset descriptions
+        info_box = box.box()
+        info_box.scale_y = 0.8
+        if scene.philo_lighting_preset == 'NATURAL':
+            info_box.label(text="Warm sunlight through windows")
+            info_box.label(text="Perfect for residential interiors")
+        elif scene.philo_lighting_preset == 'STUDIO':
+            info_box.label(text="Clean, even lighting")
+            info_box.label(text="Ideal for product showcase")
+        else:  # DRAMATIC
+            info_box.label(text="High contrast with accents")
+            info_box.label(text="Luxury furniture presentation")
+        
         # Setup button
-        layout.operator("philo.setup_lighting", icon='LIGHT')
-        
-        layout.separator()
-        
-        # Lighting controls
-        col = layout.column(align=True)
-        col.label(text="Light Intensity:")
-        col.prop(scene, "philo_hdri_strength", text="Environment")
-        col.prop(scene, "philo_key_light_strength", text="Key Light")
-        col.prop(scene, "philo_fill_light_strength", text="Fill Light")
-        col.prop(scene, "philo_use_shadows")
-        
-        col.separator()
-        
-        # Effects
-        col.label(text="Effects:")
-        col.prop(scene, "philo_use_bloom")
-        if scene.philo_use_bloom:
-            col.prop(scene, "philo_bloom_intensity", text="Bloom Strength")
-        
-        col.separator()
-        
-        # Color grading
-        col.label(text="Color Grading:")
-        col.prop(scene, "philo_exposure")
-        col.prop(scene, "philo_contrast", text="")
+        layout.operator("philo.setup_lighting", icon='LIGHT', text="Apply Lighting")
 
 class PHILO_PT_import_panel(Panel):
     bl_label = "3. Import Models"

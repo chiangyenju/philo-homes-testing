@@ -1,6 +1,6 @@
 # Philo Interior Generator
 
-A clean, minimalist Blender addon for generating realistic interior scenes with furniture import and rendering capabilities.
+A streamlined Blender addon for creating photorealistic furniture visualizations with professional lighting presets.
 
 ## Features
 
@@ -11,13 +11,15 @@ A clean, minimalist Blender addon for generating realistic interior scenes with 
    - Optimized 8x8m dimensions for interior visualization
    - Furniture automatically positioned above floor level
 
-2. **Advanced Lighting System**
-   - Environment lighting with adjustable strength
-   - Key light (main window light) with warm daylight color
-   - Fill light (ceiling bounce) for soft shadows
-   - Shadow control toggle
-   - Bloom effect for realistic glow
-   - Exposure and contrast controls
+2. **Professional Lighting Presets**
+   - **Natural**: Warm daylight through windows - perfect for residential interiors
+   - **Studio**: Clean, even lighting - ideal for product photography
+   - **Dramatic**: High contrast with accent lights - luxury furniture presentation
+   - Each preset includes optimized:
+     - Light placement and color temperatures
+     - Photorealistic render settings
+     - Subtle post-processing effects (bloom, vignette)
+     - Professional color grading
 
 3. **3D Model Import with Smart Placement**
    - Single model import with file browser
@@ -53,7 +55,20 @@ A clean, minimalist Blender addon for generating realistic interior scenes with 
 
 ## Installation
 
-### Direct Installation (Recommended)
+### Quick Installation (macOS with script)
+
+1. Navigate to the `blender-ops` directory
+2. Run the installation script:
+   ```bash
+   ./quick_install.sh
+   ```
+3. Restart Blender
+4. Enable the addon:
+   - Go to Edit > Preferences > Add-ons
+   - Search for "Philo Interior Generator"
+   - Check the box to enable it
+
+### Direct Installation (All platforms)
 
 1. Download the `philo_interior_addon` folder
 2. In Blender, go to Edit > Preferences > Add-ons
@@ -63,9 +78,9 @@ A clean, minimalist Blender addon for generating realistic interior scenes with 
 ### Manual Installation
 
 1. Copy `philo_interior_addon` to Blender's addon directory:
-   - macOS: `~/Library/Application Support/Blender/4.0/scripts/addons/`
-   - Windows: `%APPDATA%\Blender Foundation\Blender\4.0\scripts\addons\`
-   - Linux: `~/.config/blender/4.0/scripts/addons/`
+   - macOS: `~/Library/Application Support/Blender/4.4/scripts/addons/`
+   - Windows: `%APPDATA%\Blender Foundation\Blender\4.4\scripts\addons\`
+   - Linux: `~/.config/blender/4.4/scripts/addons/`
 
 2. Restart Blender and enable the addon in Preferences
 
@@ -73,14 +88,15 @@ A clean, minimalist Blender addon for generating realistic interior scenes with 
 
 1. **Open the Panel**: In 3D Viewport, press N and find the "Philo" tab
 
-2. **Workflow**:
+2. **Simple Workflow**:
    - Choose floor and wall materials in "Room Materials" panel
    - Click "Generate Room" to create the room
-   - Click "Setup Lighting" to add lights and effects
+   - Select a lighting style (Natural, Studio, or Dramatic)
+   - Click "Apply Lighting" to set up photorealistic lighting
    - Import your 3D models (single file or entire folder)
    - Select models and use "Model Tools" to scale if needed
-   - Click "Setup Camera" for elevated view with slight angle
-   - Adjust lighting and effects as needed
+   - Click "Setup Camera" for elevated view
+   - Choose render quality (Preview/Medium/High)
    - Click "Render Snapshot" for final image
 
 3. **Room Materials**:
@@ -88,39 +104,49 @@ A clean, minimalist Blender addon for generating realistic interior scenes with 
    - **Walls**: Paint, Wallpaper, Brick, or Plaster
    - Set before generating room
 
-4. **Import Settings**:
+4. **Lighting Styles**:
+   - **Natural**: Warm sunlight through windows for residential feel
+   - **Studio**: Clean, professional lighting for product showcase
+   - **Dramatic**: Moody lighting with strong contrasts for luxury items
+
+5. **Import Settings**:
    - **Avoid Overlaps**: Toggle collision detection
    - **Spacing**: Adjust minimum distance between objects (0-1m)
 
-5. **Model Scaling**:
+6. **Model Scaling**:
    - Select one or more models
    - Adjust scale slider (0.1x to 5x)
    - Click "Scale Selected Model"
 
-6. **Lighting Adjustments**:
-   - Environment Strength: Overall ambient light
-   - Key Light Power: Main directional light (0-10000)
-   - Fill Light Power: Soft fill light (0-5000)
-   - Enable Shadows: Toggle shadow rendering
-   - Bloom Effect: Add glow to bright areas
-   - Exposure: Overall brightness (-5 to +5)
-   - Contrast: Low/Medium/High options
-
 ## Tips
 
-- Choose room materials before clicking "Generate Room"
-- Start with default lighting settings and adjust gradually
-- Use Preview quality for testing, High for final renders
-- Enable "Avoid Overlaps" when importing multiple models
-- Models are automatically positioned on the floor
-- Select and scale models after import if needed
-- Scaled models are automatically repositioned on floor
-- Camera provides elevated view perfect for showcasing entire room
-- The addon automatically applies smooth shading to imported models
-- Bloom effect works best with bright light sources
-- Use Physics Tools to add realistic collision for animations
+- **Getting Started**:
+  - Choose room materials before generating the room
+  - Select lighting style based on your intended use:
+    - Natural for homey, residential feeling
+    - Studio for clean product photography
+    - Dramatic for high-end furniture showcase
+  
+- **Performance**:
+  - Use Preview quality (64 samples) for testing
+  - Medium quality (256 samples) for client reviews
+  - High quality (1024 samples) for final deliverables
+  
+- **Best Practices**:
+  - The lighting presets are optimized for furniture photography
+  - Each preset includes appropriate post-processing effects
+  - No manual adjustment needed - just select and apply
+  - Enable "Avoid Overlaps" when importing multiple models
+  - Models are automatically positioned on the floor
+
+## Keyboard Shortcuts
+
+- **N**: Toggle side panel in 3D Viewport
+- **F12**: Render image
+- **Shift+Z**: Toggle rendered viewport shading
 
 ## Requirements
 
-- Blender 4.0 or higher
+- Blender 4.4 or higher
 - GPU with Cycles support recommended for faster rendering
+- 8GB+ RAM recommended for complex scenes
