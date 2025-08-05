@@ -1,0 +1,21 @@
+torch>=2.0.0
+torchvision>=0.15.0
+ultralytics>=8.0.0
+opencv-contrib-python>=4.8.0
+segment-anything
+numpy
+pillow
+matplotlib
+jupyter
+notebook
+ipywidgets
+gradio
+
+# For Big-LaMa
+pyyaml
+tqdm
+easydict
+scikit-image
+albumentations
+omegaconf
+joblib
