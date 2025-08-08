@@ -1,18 +1,19 @@
 # Modern Inpainting Setup Guide
 
-## Quick Start After Download
+## Quick Start
 
 ### Step 1: Download Models (On Fast Internet)
 
 ```bash
 cd local-model-processing
-python download_inpainting_models.py
+python download_all_models.py
 ```
 
 Choose one:
 - **Option 1**: SDXL (5.5GB) - Best quality ⭐⭐⭐⭐⭐
 - **Option 2**: SD 1.5 (2GB) - Good quality ⭐⭐⭐⭐
-- **Option 3**: Skip (use existing LaMa) ⭐⭐⭐
+- **Option 3**: Both models
+- **Option 4**: Resume incomplete downloads
 
 ### Step 2: Upload to Google Drive
 
@@ -23,138 +24,146 @@ After download completes:
    Google Drive/My Drive/inpainting_models/
    ```
 
-2. **Upload the downloaded model folder:**
-   - If SDXL: Upload `models/sdxl_inpainting/` folder
-   - If SD 1.5: Upload `models/sd15_inpaint/` folder
+2. **Upload the downloaded model folder(s):**
+   - SDXL: Upload `models/sdxl_inpainting/` folder
+   - SD 1.5: Upload `models/sd15_inpaint/` folder
 
-3. **Keep folder structure intact:**
+3. **Final structure in Drive:**
    ```
-   Google Drive/
-   └── My Drive/
-       └── inpainting_models/
-           └── sdxl_inpainting/  (or sd15_inpaint/)
-               ├── vae/
-               │   ├── config.json
-               │   └── diffusion_pytorch_model.safetensors
-               ├── unet/
-               │   ├── config.json
-               │   └── diffusion_pytorch_model.safetensors
-               └── model_index.json
+   My Drive/
+   └── inpainting_models/
+       ├── sdxl_inpainting/     # 5.5GB total
+       │   ├── unet/
+       │   │   ├── config.json
+       │   │   └── diffusion_pytorch_model.safetensors
+       │   ├── vae/
+       │   │   ├── config.json
+       │   │   └── diffusion_pytorch_model.safetensors
+       │   └── model_index.json
+       └── sd15_inpaint/        # 2GB total
+           ├── unet/
+           ├── vae/
+           ├── text_encoder/
+           ├── tokenizer/
+           ├── scheduler/
+           └── model_index.json
    ```
 
-### Step 3: Your New Workflow
+### Step 3: Your Workflow
 
-#### Local Processing (AMD GPU Compatible)
-1. Run `room_removal_ultimate.py`
-2. Upload image → Detect objects → Create masks
-3. Click "Export for Colab Processing"
-4. You'll get a zip file with image + mask
-
-#### Google Colab Processing (High Quality)
-1. Open `sdxl_drive_colab.ipynb` in Google Colab
-2. Enable GPU: Runtime → Change runtime type → T4 GPU
-3. Run cells in order:
-   - Mount Google Drive (your models are there)
-   - Load SDXL from Drive (no downloading!)
-   - Upload your exported zip
-   - Get photorealistic inpainting results
-
-## File Descriptions
-
-### Main Files You'll Use
-
-| File | Purpose | When to Use |
-|------|---------|------------|
-| `room_removal_ultimate.py` | Detect & mask objects | Always (locally) |
-| `sdxl_drive_colab.ipynb` | SDXL inpainting | Best quality (Colab) |
-| `download_inpainting_models.py` | Download models once | Initial setup only |
-
-### Alternative Options
-
-| File | Purpose | Quality |
-|------|---------|---------|
-| `lama_simple_colab.ipynb` | Old LaMa method | ⭐⭐⭐ (dependency issues) |
-| `controlnet_inpaint_colab.ipynb` | Edge-preserving | ⭐⭐⭐⭐ |
-| `mat_inpainting.py` | LaMa alternative | ⭐⭐⭐⭐ |
-
-## Complete Example Workflow
-
-### 1. Local (5 minutes)
+#### Local Processing (Works on AMD GPU)
 ```bash
 python room_removal_ultimate.py
 ```
-- Upload room photo
-- Detect objects (YOLO)
-- Select what to remove
-- Create masks (SAM)
-- Export for Colab → `colab_export/[timestamp].zip`
+1. Upload room photo
+2. Detect objects (YOLO)
+3. Select what to remove
+4. Create masks (SAM)
+5. Export for Colab → saves `colab_export/[timestamp].zip`
 
-### 2. Google Colab (2 minutes)
-- Open `sdxl_drive_colab.ipynb`
-- Run all cells
-- Upload your zip
-- Download result
+#### Google Colab Processing
+1. Open **`inpainting_colab.ipynb`** in Google Colab
+2. Enable GPU: Runtime → Change runtime type → T4 GPU
+3. Mount Google Drive (has your models)
+4. Change `MODEL_CHOICE = "sdxl"` or `"sd15"`
+5. Upload your exported zip
+6. Get photorealistic results!
 
-### 3. Result
-- Original: Room with furniture
-- Output: Empty room, photorealistic
+## Files You Actually Need
+
+| File | Purpose | When to Use |
+|------|---------|------------|
+| **`room_removal_ultimate.py`** | Detect & mask objects | Always run locally first |
+| **`inpainting_colab.ipynb`** | Universal inpainting notebook | Use in Google Colab |
+| **`download_all_models.py`** | Download models once | Initial setup only |
+| `export_for_colab.py` | Export utility | Auto-used by room_removal |
 
 ## Model Comparison
 
-| Model | Size | Quality | Speed | Recommendation |
-|-------|------|---------|-------|----------------|
-| **SDXL** | 5.5GB | ⭐⭐⭐⭐⭐ | Medium | **Best quality** |
-| SD 1.5 | 2GB | ⭐⭐⭐⭐ | Fast | Space-conscious |
-| LaMa | 200MB | ⭐⭐⭐ | Fast | Already have |
-| ControlNet | 1.5GB | ⭐⭐⭐⭐ | Fast | Good edges |
+| Model | Size | Quality | Speed | Use When |
+|-------|------|---------|-------|----------|
+| **SDXL** | 5.5GB | ⭐⭐⭐⭐⭐ | Slower | Want best quality |
+| **SD 1.5** | 2GB | ⭐⭐⭐⭐ | Faster | Good enough + faster |
+| LaMa | 200MB | ⭐⭐⭐ | Fast | Basic inpainting |
+
+## Complete Example
+
+### 1. First Time Setup (One Time Only)
+```bash
+# Download models
+python download_all_models.py
+# Choose Option 1 (SDXL) or 2 (SD 1.5)
+
+# Upload to Google Drive manually
+# Path: My Drive/inpainting_models/
+```
+
+### 2. Regular Use
+```bash
+# Local: Detect and mask
+python room_removal_ultimate.py
+# → Export → Creates colab_export/timestamp.zip
+
+# Colab: Inpaint
+# Open inpainting_colab.ipynb
+# Change MODEL_CHOICE = "sdxl"
+# Upload zip → Get result
+```
 
 ## Troubleshooting
 
 ### "Models not found in Drive"
-- Make sure path is: `/My Drive/inpainting_models/`
-- Check folder structure matches above
+- Check path: `/content/drive/MyDrive/inpainting_models/`
+- Make sure folder names match exactly
+
+### "Download interrupted"
+```bash
+python download_all_models.py
+# Choose Option 4 to resume
+```
 
 ### "Out of memory in Colab"
-- Use Runtime → Restart runtime
-- Make sure GPU is enabled
-- Try SD 1.5 instead of SDXL
+- Use SD 1.5 instead of SDXL
+- Or add `pipe.enable_model_cpu_offload()`
 
 ### "Poor quality results"
-- Increase mask dilation in room_removal_ultimate.py
-- Try multiple inference steps in Colab
 - Use SDXL instead of SD 1.5
+- Increase mask dilation to 20px
+- Better prompt: "high quality empty room, professional real estate photography"
 
-## Why This Is Better Than LaMa
+## Direct Download Links (If Script Fails)
 
-1. **Works**: No dependency conflicts
-2. **Quality**: Photorealistic vs painted look
-3. **Modern**: Works with latest PyTorch
-4. **Cached**: Models stay in Drive, no re-downloading
-5. **Flexible**: Text-guided inpainting
+### SDXL Files (Total 5.5GB):
+1. **UNet** (5.1GB): [Download](https://huggingface.co/diffusers/stable-diffusion-xl-1.0-inpainting-0.1/resolve/main/unet/diffusion_pytorch_model.safetensors)
+   - Save to: `models/sdxl_inpainting/unet/`
 
-## Storage Requirements
+2. **VAE** (335MB): [Download](https://huggingface.co/diffusers/stable-diffusion-xl-1.0-inpainting-0.1/resolve/main/vae/diffusion_pytorch_model.safetensors)
+   - Save to: `models/sdxl_inpainting/vae/`
 
-- **Google Drive Free**: 15GB total
-- **SDXL Model**: 5.5GB
-- **Plenty of space** for results and other files
+3. Config files (small): Download from same base URL
 
-## Next Steps After Setup
-
-1. ✅ Models in Google Drive
-2. ✅ Test with one image
-3. ✅ Adjust prompts for your room style
-4. ✅ Batch process multiple rooms
+### SD 1.5 Files (Total 2GB):
+- Main model files from: `https://huggingface.co/runwayml/stable-diffusion-inpainting/tree/main`
 
 ## Tips for Best Results
 
-- **Mask Dilation**: Set to 15-20px to include shadows
-- **Prompt**: "empty room, professional real estate photo"
-- **Negative**: "furniture, objects, artifacts"
-- **Multi-pass**: Run 2 passes for highest quality
+- **Mask Dilation**: 15-20px to include shadows
+- **SDXL Prompts**: "high quality interior, empty room, professional real estate photography"
+- **Negative Prompts**: "furniture, objects, people, artifacts, blurry"
+- **Inference Steps**: 50 for best quality
+- **Multi-pass**: Run twice for refinement
+
+## Why This Setup?
+
+✅ **No dependency issues** - Modern models work with latest PyTorch  
+✅ **Cached in Drive** - Download once, use forever  
+✅ **Photorealistic** - SDXL/SD1.5 >> LaMa quality  
+✅ **One notebook** - `inpainting_colab.ipynb` handles everything  
+✅ **AMD compatible** - Detection/masking works locally  
 
 ---
 
-**Ready to go!** Your workflow is now:
-1. Local: Detect + Mask (AMD GPU works)
-2. Colab: Inpaint (NVIDIA GPU, cached models)
-3. Result: Photorealistic empty rooms
+**Quick Reference:**
+1. Local: `room_removal_ultimate.py` → Export zip
+2. Colab: `inpainting_colab.ipynb` → Upload zip → Get result
+3. Models in Drive = No re-downloading!
