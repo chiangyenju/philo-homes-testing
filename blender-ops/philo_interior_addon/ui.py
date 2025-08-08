@@ -1,3 +1,41 @@
+"""
+UI Module - User Interface for Philo Interior Generator
+
+This module creates the addon's interface panels in Blender's 3D viewport sidebar:
+
+Main Panel Structure:
+- PHILO_PT_main_panel: Parent panel containing all features
+
+Sub-panels (organized by workflow):
+1. Room Materials Panel:
+   - Room size control (4-50 meters)
+   - Floor material selection
+   - Wall material selection
+
+2. Lighting Panel:
+   - Lighting preset selection with descriptions
+   - Apply lighting button
+
+3. Import Panel:
+   - Collision/overlap settings
+   - Single model import with file browser
+   - Folder batch import
+
+4. Model Tools Panel (collapsed by default):
+   - Scale control for selected models
+
+5. Camera & Render Panel:
+   - Camera setup button
+   - Render quality selection
+   - Render snapshot button
+
+6. Physics Panel (collapsed by default):
+   - Add collision physics to selected objects
+
+The UI follows Blender's design guidelines with clear sections,
+helpful tooltips, and a logical workflow from room creation to final render.
+"""
+
 import bpy
 from bpy.types import Panel
 
@@ -29,6 +67,11 @@ class PHILO_PT_room_materials_panel(Panel):
         scene = context.scene
         
         col = layout.column(align=True)
+        col.label(text="Room Size (meters):")
+        col.prop(scene, "philo_room_size", text="")
+        
+        col.separator()
+        
         col.label(text="Floor Type:")
         col.prop(scene, "philo_floor_material", text="")
         
@@ -37,7 +80,7 @@ class PHILO_PT_room_materials_panel(Panel):
         col.label(text="Wall Type:")
         col.prop(scene, "philo_wall_material", text="")
         
-        layout.label(text="Apply materials before generating room", icon='INFO')
+        layout.label(text="Apply settings before generating room", icon='INFO')
 
 class PHILO_PT_lighting_panel(Panel):
     bl_label = "2. Lighting & Effects"
@@ -56,6 +99,11 @@ class PHILO_PT_lighting_panel(Panel):
         box.label(text="Lighting Style:", icon='LIGHT')
         box.prop(scene, "philo_lighting_preset", text="")
         
+        # HDRI option
+        box.separator()
+        box.label(text="HDRI Environment (Optional):", icon='WORLD')
+        box.prop(scene, "philo_hdri_path", text="")
+        
         # Preset descriptions
         info_box = box.box()
         info_box.scale_y = 0.8
@@ -66,8 +114,8 @@ class PHILO_PT_lighting_panel(Panel):
             info_box.label(text="Clean, even lighting")
             info_box.label(text="Ideal for product showcase")
         else:  # DRAMATIC
-            info_box.label(text="High contrast with accents")
-            info_box.label(text="Luxury furniture presentation")
+            info_box.label(text="Warm golden hour lighting")
+            info_box.label(text="Cozy, inviting atmosphere")
         
         # Setup button
         layout.operator("philo.setup_lighting", icon='LIGHT', text="Apply Lighting")

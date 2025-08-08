@@ -1,3 +1,31 @@
+"""
+Properties Module - Scene Properties for Philo Interior Generator
+
+This module defines all the custom properties that store addon settings:
+
+Lighting Properties:
+- philo_lighting_preset: Choose between Natural, Studio, or Dramatic lighting
+
+Import Properties:
+- philo_model_path: Path to single 3D model file
+- philo_folder_path: Path to folder containing multiple models
+
+Material Properties:
+- philo_floor_material: Floor type (Wood, Marble, Concrete, Carpet)
+- philo_wall_material: Wall type (Paint, Wallpaper, Brick, Plaster)
+
+Transform Properties:
+- philo_model_scale: Scale factor for selected models
+- philo_room_size: Room dimensions in meters (4-50m)
+
+Collision Properties:
+- philo_use_collision: Enable/disable overlap prevention
+- philo_collision_margin: Minimum spacing between objects
+
+Render Properties:
+- philo_render_quality: Preview (64), Medium (256), or High (2048) samples
+"""
+
 import bpy
 from bpy.props import StringProperty, FloatProperty, EnumProperty, BoolProperty, IntProperty
 
@@ -9,7 +37,7 @@ def register():
         items=[
             ('NATURAL', 'Natural', 'Warm daylight through windows'),
             ('STUDIO', 'Studio', 'Clean product photography lighting'),
-            ('DRAMATIC', 'Dramatic', 'Moody luxury furniture lighting'),
+            ('DRAMATIC', 'Golden Hour', 'Warm sunset lighting for cozy atmosphere'),
         ],
         default='NATURAL'
     )
@@ -90,6 +118,24 @@ def register():
         ],
         default='MEDIUM'
     )
+    
+    # Room size property
+    bpy.types.Scene.philo_room_size = FloatProperty(
+        name="Room Size",
+        description="Size of the room in meters",
+        default=8.0,
+        min=4.0,
+        max=50.0,
+        precision=1
+    )
+    
+    # HDRI path property
+    bpy.types.Scene.philo_hdri_path = StringProperty(
+        name="HDRI Path",
+        description="Path to HDRI environment texture (optional)",
+        default="",
+        subtype='FILE_PATH'
+    )
 
 def unregister():
     del bpy.types.Scene.philo_lighting_preset
@@ -101,3 +147,5 @@ def unregister():
     del bpy.types.Scene.philo_use_collision
     del bpy.types.Scene.philo_collision_margin
     del bpy.types.Scene.philo_render_quality
+    del bpy.types.Scene.philo_room_size
+    del bpy.types.Scene.philo_hdri_path

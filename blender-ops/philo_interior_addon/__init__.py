@@ -1,3 +1,19 @@
+"""
+Philo Interior Generator - Blender Addon for Interior Visualization
+
+This addon provides a complete workflow for creating photorealistic interior renders:
+- Automated room generation with customizable materials
+- Professional lighting presets (Natural, Studio, Dramatic)
+- Batch furniture import with intelligent placement
+- Camera setup optimized for interior visualization
+- High-quality rendering with realistic settings
+
+Main Components:
+- operators.py: Core functionality (room generation, lighting, import, rendering)
+- props.py: Scene properties and settings storage
+- ui.py: User interface panels in the 3D viewport sidebar
+"""
+
 bl_info = {
     "name": "Philo Interior Generator",
     "blender": (4, 0, 0),
