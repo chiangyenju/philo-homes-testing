@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir:*)",
+      "Bash(del quick_setup.bat download_models.py setup_guide.md room_removal_notebook.ipynb)",
+      "Bash(rm:*)",
+      "Bash(move modelsbig-lamaconfig.yaml modelsconfig.yaml)",
+      "Bash(mv:*)",
+      "Bash(pip install:*)",
+      "Bash(python:*)",
+      "Bash(xcopy:*)",
+      "Bash(cp:*)",
+      "Bash(nvidia-smi:*)",
+      "Bash(wmic:*)",
+      "Bash(ls:*)",
+      "Bash(grep:*)",
+      "Bash(git add:*)",
+      "Bash(git rm:*)",
+      "Bash(git commit:*)",
+      "Bash(git config:*)",
+      "Bash(git push:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(del \"C:\\Users\\Andrew\\philo-homes-testing\\local-model-processing\\check_torch.py\")",
+      "Bash(dir:*)",
+      "Bash(true)"
+    ],
+    "deny": []
+  }
+}

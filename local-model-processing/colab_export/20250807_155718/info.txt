@@ -1,0 +1,11 @@
+Export for Colab Processing
+Timestamp: 20250807_155718
+Image shape: (896, 1280, 3)
+Mask shape: (896, 1280)
+
+Quick Instructions:
+1. Upload the ZIP file to Google Colab
+2. Use lama_refinement_optimized.ipynb
+3. Run with GPU for best quality refinement
+
+Note: Only LaMa model needed on Colab (no YOLO/SAM required)

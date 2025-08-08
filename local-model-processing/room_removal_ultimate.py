@@ -27,6 +27,14 @@ if os.path.exists("lama"):
 from ultralytics import YOLO
 from segment_anything import sam_model_registry, SamPredictor, SamAutomaticMaskGenerator
 
+# Import export functionality for Colab workflow
+try:
+    from export_for_colab import export_for_colab
+    EXPORT_AVAILABLE = True
+except ImportError:
+    EXPORT_AVAILABLE = False
+    print("Export functionality not available - export_for_colab.py not found")
+
 # Fix albumentations compatibility
 try:
     import albumentations
@@ -44,11 +52,19 @@ except:
 
 # Try to import LaMa components
 LAMA_AVAILABLE = False
+REFINEMENT_AVAILABLE = False
 try:
     from saicinpainting.training.trainers import load_checkpoint
     from saicinpainting.evaluation.data import pad_tensor_to_modulo
     LAMA_AVAILABLE = True
     print("✅ LaMa modules loaded successfully!")
+    try:
+        from saicinpainting.evaluation.refinement import refine_predict
+        from saicinpainting.evaluation.utils import move_to_device
+        REFINEMENT_AVAILABLE = True
+        print("✅ LaMa refinement module loaded successfully!")
+    except ImportError:
+        print("⚠️ LaMa refinement module not available")
 except ImportError as e:
     print(f"⚠️ LaMa modules not available: {e}")
 
@@ -77,13 +93,21 @@ class SAMConfig:
     
 @dataclass
 class LamaConfig:
-    refine_iterations: int = 5  # PR #112 iterative refinement
+    use_official_refinement: bool = True  # Use official multi-scale refinement
+    refine_iterations: int = 5  # For old method - number of iterations
     refine_mask_dilate: int = 15
     refine_mask_blur: int = 21
     hd_strategy_resize_limit: int = 2048
     hd_strategy_crop_margin: int = 196
     hd_strategy_crop_trigger_size: int = 1024
     device: str = "cuda"
+    # Official refinement parameters
+    refine_gpu_ids: str = "0"  # GPU IDs for refinement
+    refine_n_iters: int = 15  # Iterations per scale
+    refine_lr: float = 0.002  # Learning rate
+    refine_min_side: int = 512  # Min side for pyramid
+    refine_max_scales: int = 3  # Max pyramid scales
+    refine_px_budget: int = 1800000  # Max pixels to process
     
     
 # Global state - Auto-detect best device
@@ -319,6 +343,103 @@ def lama_inpaint(model, image: np.ndarray, mask: np.ndarray, config: LamaConfig)
     return result
 
 
+
+def lama_inpaint_with_official_refinement(model, image: np.ndarray, mask: np.ndarray, config: LamaConfig) -> np.ndarray:
+    """
+    LaMa inpainting with official multi-scale refinement
+    """
+    if model is None:
+        raise ValueError("LaMa model not loaded")
+    
+    if not REFINEMENT_AVAILABLE:
+        print("⚠️ Official refinement not available, falling back to single pass")
+        config_copy = LamaConfig(**vars(config))
+        config_copy.refine_iterations = 1
+        return lama_inpaint(model, image, mask, config_copy)
+    
+    # Convert BGR to RGB if needed
+    if image.shape[2] == 3:
+        image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    else:
+        image_rgb = image
+    
+    # Convert to tensors
+    image_tensor = torch.from_numpy(image_rgb.transpose(2, 0, 1)).float().unsqueeze(0) / 255.0
+    mask_tensor = torch.from_numpy(mask).float().unsqueeze(0).unsqueeze(0) / 255.0
+    
+    # Store original size
+    orig_height, orig_width = image.shape[:2]
+    
+    # Pad to multiple of 8
+    image_tensor = pad_tensor_to_modulo(image_tensor, 8)
+    mask_tensor = pad_tensor_to_modulo(mask_tensor, 8)
+    
+    # Create batch dict
+    batch = {
+        'image': image_tensor,
+        'mask': mask_tensor,
+        'unpad_to_size': torch.tensor([orig_height, orig_width]).unsqueeze(0)
+    }
+    
+    # For AMD GPU/DirectML, we need to handle this differently
+    if str(device).startswith('privateuseone'):
+        print("  ⚠️ AMD GPU detected - Official refinement requires CUDA")
+        print("  💡 Options:")
+        print("     1. Use single-pass inpainting (disable refinement)")
+        print("     2. Run this on Google Colab with GPU")
+        print("     3. Use a cloud GPU service")
+        # For now, fall back to single pass
+        config_copy = LamaConfig(**vars(config))
+        config_copy.refine_iterations = 1
+        return lama_inpaint(model, image, mask, config_copy)
+    
+    gpu_ids_to_use = config.refine_gpu_ids
+    model_was_on_gpu = False
+    
+    # Use official refinement
+    print(f"  Running official refinement with {config.refine_max_scales} scales...")
+    try:
+        result_tensor = refine_predict(
+            batch, 
+            model,
+            gpu_ids=gpu_ids_to_use,  # Use CPU for AMD
+            modulo=8,
+            n_iters=config.refine_n_iters,
+            lr=config.refine_lr,
+            min_side=config.refine_min_side,
+            max_scales=config.refine_max_scales,
+            px_budget=config.refine_px_budget
+        )
+        result = result_tensor[0].permute(1, 2, 0).numpy()
+        
+        # Move model back to original device if needed
+        if model_was_on_gpu:
+            model.to(DEVICE_CONFIG['lama'])
+        
+        # Result is already unpadded by refine_predict
+        if result.max() <= 1.0:
+            result = np.clip(result * 255, 0, 255).astype(np.uint8)
+        else:
+            result = np.clip(result, 0, 255).astype(np.uint8)
+        
+        # Convert back to BGR if needed
+        if image.shape[2] == 3 and image_rgb is not image:
+            result = cv2.cvtColor(result, cv2.COLOR_RGB2BGR)
+        
+        print("  ✅ Official refinement complete!")
+        return result
+        
+    except Exception as e:
+        print(f"  ❌ Official refinement failed: {e}")
+        print("  Falling back to single pass...")
+        # Move model back if needed
+        if 'model_was_on_gpu' in locals() and model_was_on_gpu:
+            model.to(DEVICE_CONFIG['lama'])
+        config_copy = LamaConfig(**vars(config))
+        config_copy.refine_iterations = 1
+        return lama_inpaint(model, image, mask, config_copy)
+
+
 def process_detection(image, yolo_config: YOLOConfig):
     """Advanced YOLO detection with full parameter control"""
     global current_state
@@ -331,14 +452,15 @@ def process_detection(image, yolo_config: YOLOConfig):
     
     # Load or update YOLO model
     if 'yolo' not in models or models['yolo'].model_name != yolo_config.model:
-        # Check if model exists locally first
+        # Always use models from the models/ folder
         local_model_path = f"models/{yolo_config.model}"
         if os.path.exists(local_model_path):
-            print(f"Loading YOLO model from local: {local_model_path}")
+            print(f"Loading YOLO model from: {local_model_path}")
             models['yolo'] = YOLO(local_model_path)
         else:
-            print(f"Loading YOLO model: {yolo_config.model} (will download if needed)")
-            models['yolo'] = YOLO(yolo_config.model)
+            print(f"❌ YOLO model not found at {local_model_path}")
+            print(f"Please run download_models.py to download the model")
+            return None, "YOLO model not found", ""
     
     # Run detection with all parameters
     results = models['yolo'](
@@ -561,20 +683,49 @@ def process_inpainting(lama_config: LamaConfig):
             models['lama'] = None
     
     if models.get('lama') is not None:
-        # Use real LaMa with iterative refinement
+        # Use real LaMa with proper refinement
         try:
-            print(f"Running LaMa inpainting with {lama_config.refine_iterations} iterations...")
-            result = lama_inpaint(models['lama'], img, mask, lama_config)
-            method = "LaMa with Iterative Refinement"
+            # Check if we're on AMD
+            is_amd = str(device).startswith('privateuseone')
+            
+            if lama_config.use_official_refinement:
+                if REFINEMENT_AVAILABLE and not is_amd:
+                    print(f"Running LaMa with official multi-scale refinement...")
+                    result = lama_inpaint_with_official_refinement(models['lama'], img, mask, lama_config)
+                    method = "LaMa with Official Multi-Scale Refinement"
+                elif is_amd:
+                    print(f"\n⚠️ AMD GPU detected - Official refinement requires NVIDIA CUDA")
+                    print(f"📋 For best quality, you have these options:")
+                    print(f"   1. Use the included Colab notebook: lama_refinement_colab.ipynb")
+                    print(f"   2. Save image/mask and process on a cloud GPU service")
+                    print(f"   3. Use single-pass inpainting (good quality, no refinement)\n")
+                    print(f"Using single-pass inpainting for now...")
+                    lama_config_copy = LamaConfig(**vars(lama_config))
+                    lama_config_copy.refine_iterations = 1
+                    result = lama_inpaint(models['lama'], img, mask, lama_config_copy)
+                    method = "LaMa Single Pass (AMD GPU - Refinement needs CUDA)"
+                else:
+                    print(f"⚠️ Refinement not available, using single pass...")
+                    lama_config_copy = LamaConfig(**vars(lama_config))
+                    lama_config_copy.refine_iterations = 1
+                    result = lama_inpaint(models['lama'], img, mask, lama_config_copy)
+                    method = "LaMa Single Pass (No refinement available)"
+            else:
+                # Use old iterative method or single pass
+                if lama_config.refine_iterations > 1:
+                    print(f"⚠️ Warning: Multiple iterations may create artifacts!")
+                    print(f"Running LaMa inpainting with {lama_config.refine_iterations} iterations...")
+                else:
+                    print(f"Running LaMa inpainting (single pass)...")
+                result = lama_inpaint(models['lama'], img, mask, lama_config)
+                method = f"LaMa with {lama_config.refine_iterations} iteration(s)"
             print("✅ LaMa inpainting complete!")
         except Exception as e:
             print(f"❌ LaMa inference failed: {e}")
             import traceback
             traceback.print_exc()
-            # NO OpenCV fallback - it produces terrible results
-            # Better to show error than bad result
             result = img  # Return original
-            method = "Failed - LaMa error (no fallback)"
+            method = "Failed - LaMa error"
     else:
         # No LaMa available
         print("❌ LaMa model not loaded!")
@@ -729,6 +880,11 @@ def create_ui():
                                 )
                         
                         segment_btn = gr.Button("✂️ Create Masks", variant="primary", size="lg")
+                        
+                        # Add export button for Colab workflow
+                        with gr.Row(visible=False) as export_row:
+                            export_btn = gr.Button("Export for Colab Processing", variant="secondary", size="lg")
+                            export_info = gr.Textbox(label="Export Status", lines=1, visible=False)
                     
                     with gr.Column(scale=2):
                         mask_output = gr.Image(label="Segmentation Mask")
@@ -739,10 +895,15 @@ def create_ui():
                     with gr.Column(scale=1):
                         with gr.Group():
                             gr.Markdown("### LaMa Parameters")
+                            use_official_refine = gr.Checkbox(
+                                label="Use Official Multi-Scale Refinement",
+                                value=True,
+                                info="Recommended: Uses proper pyramid refinement instead of iterative method"
+                            )
                             lama_iterations = gr.Slider(
-                                minimum=1, maximum=10, value=5, step=1,
-                                label="Refinement Iterations",
-                                info="More iterations = better quality (PR #112)"
+                                minimum=1, maximum=10, value=1, step=1,
+                                label="Iterations (Old Method)",
+                                info="Only used if official refinement is OFF. WARNING: >1 may cause artifacts!"
                             )
                             lama_dilate = gr.Slider(
                                 minimum=0, maximum=50, value=15, step=5,
@@ -754,6 +915,23 @@ def create_ui():
                                 label="Mask Edge Blur",
                                 info="Soften mask edges (must be odd)"
                             )
+                            
+                            with gr.Accordion("Official Refinement Settings", open=False):
+                                refine_scales = gr.Slider(
+                                    minimum=1, maximum=5, value=3, step=1,
+                                    label="Pyramid Scales",
+                                    info="Number of multi-scale levels (3 recommended)"
+                                )
+                                refine_iters = gr.Slider(
+                                    minimum=5, maximum=30, value=15, step=5,
+                                    label="Iterations per Scale",
+                                    info="Optimization iterations at each scale"
+                                )
+                                refine_lr = gr.Slider(
+                                    minimum=0.001, maximum=0.01, value=0.002, step=0.001,
+                                    label="Learning Rate",
+                                    info="Feature optimization learning rate"
+                                )
                             
                             with gr.Accordion("HD Strategy", open=False):
                                 lama_resize_limit = gr.Slider(
@@ -799,7 +977,11 @@ def create_ui():
                 
                 <h2>🎨 LaMa Inpainting Parameters</h2>
                 <ul style="line-height: 1.8;">
-                    <li><b>Refinement Iterations:</b> Progressive improvement steps (5 = balanced, 7-10 = highest quality)</li>
+                    <li><b>Official Refinement:</b> Uses multi-scale pyramid optimization (RECOMMENDED)</li>
+                    <li><b>Pyramid Scales:</b> Number of resolution levels (3 = good balance)</li>
+                    <li><b>Iterations per Scale:</b> Optimization steps at each scale (15 recommended)</li>
+                    <li><b>Learning Rate:</b> Feature optimization rate (0.002 is optimal)</li>
+                    <li><b>Old Method Iterations:</b> Simple iterative approach (WARNING: >1 causes artifacts!)</li>
                     <li><b>Mask Dilation:</b> Extra expansion before inpainting (15 recommended)</li>
                     <li><b>Mask Edge Blur:</b> Soften mask boundaries for seamless blending (21 recommended)</li>
                     <li><b>HD Strategy:</b> For images >1024px - resize limit, crop margin, trigger size</li>
@@ -808,9 +990,9 @@ def create_ui():
                 <h2>🔥 Quick Settings</h2>
                 <ul style="line-height: 1.8;">
                     <li><b>Maximum Detection:</b> Confidence=0.001, IoU=0.3, Max=500</li>
-                    <li><b>Clean Removal:</b> SAM dilation=15, LaMa iterations=7, blur=21</li>
-                    <li><b>Fast Mode:</b> vit_b model, 3 iterations, no dilation</li>
-                    <li><b>Quality Mode:</b> vit_h model, 7-10 iterations, dilation=20</li>
+                    <li><b>Best Quality:</b> Official refinement ON, 3 scales, SAM dilation=15</li>
+                    <li><b>Fast Mode:</b> Official refinement OFF, 1 iteration, vit_b model</li>
+                    <li><b>Avoid Artifacts:</b> NEVER use old method with >1 iteration!</li>
                 </ul>
             </div>
             """)
@@ -823,6 +1005,8 @@ def create_ui():
                 <li><b>Segmentation:</b> vit_h gives best quality but is slower</li>
                 <li><b>Inpainting:</b> 5-7 iterations with proper LaMa gives best results</li>
                 <li><b>Mask:</b> Slight dilation (10-20) helps remove shadows</li>
+                <li><b>AMD GPU Users:</b> After generating masks, use "Export for Colab" button to process with GPU acceleration</li>
+                <li><b>Workflow:</b> You can run detection/segmentation locally and export to Colab for refinement</li>
             </ul>
         </div>
         """)
@@ -859,14 +1043,18 @@ def create_ui():
             )
             return process_segmentation(indices, config)
         
-        def on_inpaint(iterations, dilate, blur, resize_limit, crop_margin, crop_size):
+        def on_inpaint(use_official, iterations, dilate, blur, scales, iters_per_scale, lr, resize_limit, crop_margin, crop_size):
             # Ensure blur is odd
             blur = blur if blur % 2 == 1 else blur + 1
             
             config = LamaConfig(
+                use_official_refinement=use_official,
                 refine_iterations=iterations,
                 refine_mask_dilate=dilate,
                 refine_mask_blur=blur,
+                refine_max_scales=scales,
+                refine_n_iters=iters_per_scale,
+                refine_lr=lr,
                 hd_strategy_resize_limit=resize_limit,
                 hd_strategy_crop_margin=crop_margin,
                 hd_strategy_crop_trigger_size=crop_size
@@ -890,16 +1078,48 @@ def create_ui():
             outputs=[selected_objects]
         )
         
+        def on_segment_with_export(*args):
+            """Wrapper to handle segmentation and show export button"""
+            mask_img, info = on_segment(*args)
+            # Show export button if mask was created successfully
+            if mask_img is not None and current_state['combined_mask'] is not None:
+                return mask_img, info, gr.update(visible=True), gr.update(visible=True)
+            return mask_img, info, gr.update(visible=False), gr.update(visible=False)
+        
+        def on_export_for_colab():
+            """Export current image and mask for Colab processing"""
+            if not EXPORT_AVAILABLE:
+                return "Export functionality not available - export_for_colab.py not found"
+            
+            if current_state['image'] is None or current_state['combined_mask'] is None:
+                return "No image/mask to export. Please generate a mask first."
+            
+            try:
+                export_path = export_for_colab(
+                    current_state['image'],
+                    current_state['combined_mask'],
+                    create_zip=True
+                )
+                return f"[OK] Exported to: {export_path}.zip\n[INFO] Upload to Google Drive and run lama_refinement_colab.ipynb"
+            except Exception as e:
+                return f"[ERROR] Export failed: {str(e)}"
+        
         segment_btn.click(
-            on_segment,
+            on_segment_with_export,
             inputs=[selected_objects, sam_model, sam_multimask, sam_auto, 
                    sam_points, sam_pred_iou, sam_stability, sam_dilate_kernel, sam_dilate_iter],
-            outputs=[mask_output, mask_info]
+            outputs=[mask_output, mask_info, export_row, export_info]
+        )
+        
+        export_btn.click(
+            on_export_for_colab,
+            outputs=[export_info]
         )
         
         inpaint_btn.click(
             on_inpaint,
-            inputs=[lama_iterations, lama_dilate, lama_blur,
+            inputs=[use_official_refine, lama_iterations, lama_dilate, lama_blur,
+                   refine_scales, refine_iters, refine_lr,
                    lama_resize_limit, lama_crop_margin, lama_crop_size],
             outputs=[original_display, inpaint_output, inpaint_info]
         )
@@ -912,8 +1132,10 @@ def check_models():
     models_status = {
         "yolov8x.pt": "YOLOv8x (Best detection)",
         "yolov8l.pt": "YOLOv8l (Large detection)",
+        "yolov8m.pt": "YOLOv8m (Medium detection)",
         "sam_vit_h_4b8939.pth": "SAM ViT-H (Best segmentation)",
         "sam_vit_b_01ec64.pth": "SAM ViT-B (Fast segmentation)",
+        "sam_vit_l_0b3195.pth": "SAM ViT-L (Balanced segmentation)",
         "best.ckpt": "Big-LaMa checkpoint",
         "config.yaml": "Big-LaMa config"
     }
@@ -941,6 +1163,12 @@ if __name__ == "__main__":
     print(f"🚀 Starting Ultimate Room Object Removal")
     print(f"📍 Device: {device}")
     print(f"🧠 LaMa Available: {LAMA_AVAILABLE}")
+    print(f"🔄 Official Refinement Available: {REFINEMENT_AVAILABLE}")
+    
+    if str(device).startswith('privateuseone'):
+        print(f"\n💡 AMD GPU Detected - For best refinement quality:")
+        print(f"   • Use the included Google Colab notebook: lama_refinement_colab.ipynb")
+        print(f"   • Or use single-pass mode (still produces good results)\n")
     
     # Check models
     all_models_available = check_models()
