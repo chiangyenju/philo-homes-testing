@@ -25,7 +25,8 @@
       "Bash(true)",
       "Bash(git restore:*)",
       "Bash(git clean:*)",
-      "Bash(git pull:*)"
+      "Bash(git pull:*)",
+      "Bash(FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch --force --index-filter \"git rm --cached --ignore-unmatch local-model-processing/models/*.pth local-model-processing/models/*.pt local-model-processing/models/*.ckpt\" --prune-empty --tag-name-filter cat -- --all)"
     ],
     "deny": []
   }
