@@ -1,0 +1,62 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+
+# Virtual Environment
+bin/
+include/
+lib/
+lib64/
+share/
+pyvenv.cfg
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Project specific
+*.tiff
+*.tif
+*.rap
+*.dwg
+*.dxf
+extraction_results.json
+extraction_results.csv
+extraction_visualization.png
+test_results.json
+layout_coordinates.*
+layout_extracted.*
+layout_detected.*
+layout_annotated.*
+layout_final.*
+
+# Gradio
+flagged/
+gradio_cached_examples/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Logs
+*.log
+
+# Test images (keep only example)
+*.png
+*.jpg
+*.jpeg
+!example_layout.png
+
+# Keep the main layout.png for demo
+!layout.png
