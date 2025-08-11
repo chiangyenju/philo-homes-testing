@@ -119,6 +119,76 @@ def download_sd15():
         print(f"\nDownloading: {os.path.basename(filepath)} ({info['size_mb']}MB)")
         download_file(base_url + info["path"], filepath)
 
+def download_mat():
+    """Download MAT (Mask-Aware Transformer) models"""
+    print("\n=== MAT Inpainting Models ===")
+    print("State-of-the-art transformer-based inpainting")
+    print("Better quality than LaMa, works with modern PyTorch")
+    
+    os.makedirs("models/mat/pretrained", exist_ok=True)
+    
+    # MAT models with OneDrive links
+    models = {
+        "Places512": {
+            "filename": "models/mat/pretrained/Places_512_FullData.pkl",
+            "url": "https://mycuhk-my.sharepoint.com/:u:/g/personal/1155137927_link_cuhk_edu_hk/EYzXPHvdFGlOl_o0p0moCsEBmj7E8wEPxRSMqmX0N2uF0A?download=1",
+            "size_mb": 1300,
+            "description": "Best Places model (8M training images)"
+        },
+        "CelebA-HQ": {
+            "filename": "models/mat/pretrained/CelebA-HQ.pkl",
+            "url": "https://mycuhk-my.sharepoint.com/:u:/g/personal/1155137927_link_cuhk_edu_hk/ETTRAiTzzJpNv00y8h_FqN8BwU5tv8A2w-uqW4FmrhYpCQ?download=1",
+            "size_mb": 1300,
+            "description": "Face inpainting model"
+        },
+        "FFHQ-512": {
+            "filename": "models/mat/pretrained/FFHQ.pkl", 
+            "url": "https://mycuhk-my.sharepoint.com/:u:/g/personal/1155137927_link_cuhk_edu_hk/ESwt5gvPs4JOvC76WAEDfb4BSJZNy-qsfJSUZz2kTxYyWw?download=1",
+            "size_mb": 1300,
+            "description": "High-quality face inpainting"
+        }
+    }
+    
+    print("\nAvailable MAT models:")
+    for name, info in models.items():
+        status = "✓" if os.path.exists(info["filename"]) else "✗"
+        print(f"  {status} {name}: {info['description']}")
+    
+    print("\n" + "="*60)
+    print("MAT MODELS REQUIRE MANUAL DOWNLOAD")
+    print("="*60)
+    print("\nDue to OneDrive restrictions, MAT models need manual download.")
+    print("\nOption 1: Download from OneDrive links")
+    print("Places512 (Best): https://bit.ly/mat-places512")
+    print("CelebA-HQ: https://bit.ly/mat-celebahq") 
+    print("FFHQ-512: https://bit.ly/mat-ffhq")
+    
+    print("\nOption 2: All models folder")
+    print("https://mycuhk-my.sharepoint.com/:f:/g/personal/1155137927_link_cuhk_edu_hk/EuY30ziF-G5BvwziuHNFzDkBVC6KBPRg69kCeHIu-BXORA")
+    
+    print("\nSave downloaded models to:")
+    print("  models/mat/pretrained/")
+    
+    # Clone MAT repository if not present
+    mat_repo = "models/mat/MAT"
+    if not os.path.exists(mat_repo):
+        print("\nCloning MAT repository...")
+        try:
+            import subprocess
+            result = subprocess.run(
+                ["git", "clone", "https://github.com/fenglinglwb/MAT.git", mat_repo],
+                capture_output=True,
+                text=True
+            )
+            if result.returncode == 0:
+                print("  ✓ MAT repository cloned")
+            else:
+                print(f"  ✗ Failed to clone: {result.stderr}")
+        except Exception as e:
+            print(f"  ✗ Error: {str(e)}")
+    else:
+        print("\n  ✓ MAT repository already exists")
+
 def check_existing():
     """Check what's already downloaded"""
     print("\n=== Checking Existing Files ===")
@@ -149,6 +219,18 @@ def check_existing():
     else:
         print(f"  SD1.5: Not found")
     
+    # Check MAT models
+    mat_models = ["Places_512_FullData.pkl", "CelebA-HQ.pkl", "FFHQ.pkl"]
+    mat_found = False
+    for model in mat_models:
+        path = f"models/mat/pretrained/{model}"
+        if os.path.exists(path):
+            size_mb = os.path.getsize(path) / 1024 / 1024
+            print(f"  MAT {model}: {size_mb:.1f}MB")
+            mat_found = True
+    if not mat_found:
+        print(f"  MAT: No models found")
+    
     return sdxl_complete
 
 def main():
@@ -160,13 +242,14 @@ def main():
     sdxl_complete = check_existing()
     
     print("\n=== Options ===")
-    print("1. Download SDXL (5.5GB) - Best quality")
+    print("1. Download SDXL (5.5GB) - Best quality diffusion")
     print("2. Download SD 1.5 (2GB) - Good quality, smaller")
-    print("3. Download both")
-    print("4. Resume/fix incomplete SDXL")
-    print("5. Check status only")
+    print("3. Download both SDXL and SD 1.5")
+    print("4. Setup MAT models - State-of-the-art transformer")
+    print("5. Resume/fix incomplete SDXL")
+    print("6. Check status only")
     
-    choice = input("\nChoice (1-5): ").strip()
+    choice = input("\nChoice (1-6): ").strip()
     
     if choice == "1":
         download_sdxl()
@@ -176,9 +259,11 @@ def main():
         download_sdxl()
         download_sd15()
     elif choice == "4":
+        download_mat()
+    elif choice == "5":
         print("\nResuming SDXL downloads...")
         download_sdxl()
-    elif choice == "5":
+    elif choice == "6":
         print("\nStatus check complete.")
         return
     else:
@@ -186,19 +271,29 @@ def main():
         return
     
     print("\n" + "="*60)
-    print("DOWNLOAD COMPLETE!")
+    print("SETUP COMPLETE!")
     print("="*60)
     print("\nNext steps:")
-    print("1. Upload to Google Drive:")
+    print("1. For SDXL/SD1.5 - Upload to Google Drive:")
     print("   - models/sdxl_inpainting/ -> My Drive/inpainting_models/sdxl_inpainting/")
     print("   - models/sd15_inpaint/ -> My Drive/inpainting_models/sd15_inpaint/")
-    print("2. Use the Colab notebooks:")
-    print("   - sdxl_drive_colab.ipynb (for SDXL)")
-    print("   - sd15_colab.ipynb (for SD 1.5)")
+    print("   - Use Colab notebooks: sdxl_drive_colab.ipynb, sd15_colab.ipynb")
+    
+    print("\n2. For MAT models:")
+    print("   - Download models manually from OneDrive links provided")
+    print("   - Place in models/mat/pretrained/")
+    print("   - Use mat_inpainting.py for setup and integration")
+    
+    print("\nModel Comparison:")
+    print("• SDXL: Best photorealistic quality, large files (5.5GB)")
+    print("• SD 1.5: Good quality, smaller files (2GB)")  
+    print("• MAT: State-of-the-art transformer, best structure preservation")
+    
     print("\nWorkflow:")
     print("1. Local: room_removal_ultimate.py (detect + mask)")
-    print("2. Export for Colab")
-    print("3. Colab: Run inpainting with your Drive models")
+    print("2. Export for Colab or local processing")
+    print("3. Run inpainting with your chosen model")
+    print("4. MAT generally gives best results for large hole inpainting!")
 
 if __name__ == "__main__":
     main()
