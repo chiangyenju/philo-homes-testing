@@ -10,7 +10,8 @@
       "Bash(dism.exe:*)",
       "Bash(wsl:*)",
       "Bash(git rm:*)",
-      "Bash(true)"
+      "Bash(true)",
+      "Bash(git push:*)"
     ],
     "deny": []
   }
