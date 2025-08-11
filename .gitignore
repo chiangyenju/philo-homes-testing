@@ -30,3 +30,14 @@ blender-ops/3d-models/
 *.ply
 *.stl
 *.x3d
+
+# Machine Learning models
+*.pth
+*.pt
+*.ckpt
+*.safetensors
+*.bin
+*.h5
+*.pkl
+*.pickle
+*.onnx
