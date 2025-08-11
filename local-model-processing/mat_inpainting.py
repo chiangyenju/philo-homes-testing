@@ -1,102 +1,218 @@
+#!/usr/bin/env python3
 """
-MAT (Mask-Aware Transformer) - Modern LaMa alternative
-Paper: https://github.com/fenglinglwb/MAT
-Better than LaMa, works with modern PyTorch
+MAT Inpainting for Object Removal
+High-quality inpainting using MAT (Mask-Aware Transformer) model
 """
 
-import torch
-import numpy as np
-from PIL import Image
+import gradio as gr
 import cv2
-
-def setup_mat_colab():
-    """
-    Setup commands for Google Colab
-    """
-    setup_commands = """
-# Clone MAT repository
-!git clone https://github.com/fenglinglwb/MAT.git
-%cd MAT
-
-# Install dependencies (works with modern PyTorch)
-!pip install torch torchvision opencv-python pillow numpy
-
-# Download pretrained model
-!gdown https://drive.google.com/uc?id=1HMnQhkqr6qTXXHmMNu5hpBLs8JvK6JVw -O pretrained/MAT_Places512.pkl
-    """
-    return setup_commands
-
-def mat_inpaint_colab():
-    """
-    MAT inpainting code for Colab
-    """
-    code = '''
+import numpy as np
+import torch
+import torch.nn.functional as F
+from PIL import Image
+import os
 import sys
-sys.path.append('/content/MAT')
+import zipfile
+from datetime import datetime
+from dataclasses import dataclass
 
-from models.mat import MAT
-import torch
-from PIL import Image
-import numpy as np
-import cv2
+# Add MAT model path
+mat_path = "mat_workspace/MAT"
+if os.path.exists(mat_path):
+    sys.path.insert(0, mat_path)
 
-# Load model
-model = MAT(model_type='completion').to('cuda')
-checkpoint = torch.load('pretrained/MAT_Places512.pkl', map_location='cuda')
-model.load_state_dict(checkpoint['model'])
-model.eval()
+try:
+    from networks.mat import Generator
+    MAT_AVAILABLE = True
+    print("✅ MAT modules loaded successfully!")
+except ImportError as e:
+    print(f"❌ MAT modules not available: {e}")
+    print("Please ensure MAT is properly installed in mat_workspace/MAT/")
+    MAT_AVAILABLE = False
 
-# Load your images
-image = Image.open("image.png").convert("RGB")
-mask = Image.open("mask.png").convert("L")
+@dataclass
+class MATConfig:
+    checkpoint_path: str = "mat_workspace/MAT/pretrained/celeba_hq.pkl"
+    image_size: int = 256
+    mask_dilate: int = 10
+    mask_blur: int = 5
 
-# Preprocess
-image_np = np.array(image).astype(np.float32) / 255.0
-mask_np = np.array(mask).astype(np.float32) / 255.0
+def get_best_device():
+    """Auto-detect best available device"""
+    if torch.cuda.is_available():
+        return torch.device('cuda')
+    else:
+        try:
+            import torch_directml
+            dml_device = torch_directml.device()
+            print("✅ DirectML detected - Using AMD GPU acceleration!")
+            return dml_device
+        except:
+            return torch.device('cpu')
 
-# Add batch dimension and convert to tensor
-image_tensor = torch.from_numpy(image_np).permute(2, 0, 1).unsqueeze(0).to('cuda')
-mask_tensor = torch.from_numpy(mask_np).unsqueeze(0).unsqueeze(0).to('cuda')
+device = get_best_device()
+current_state = {
+    'image': None,
+    'mask': None,
+    'model': None,
+    'result': None
+}
 
-# Inpaint
-with torch.no_grad():
-    output = model(image_tensor, mask_tensor)
+def load_zip_file(zip_file):
+    """Load image and mask from uploaded zip file"""
+    if zip_file is None:
+        return None, None, "Please upload a zip file"
     
-# Convert back to image
-result = output[0].permute(1, 2, 0).cpu().numpy()
-result = (result * 255).astype(np.uint8)
-result_image = Image.fromarray(result)
+    try:
+        # Extract zip file
+        extract_dir = f"temp_extract_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        os.makedirs(extract_dir, exist_ok=True)
+        
+        with zipfile.ZipFile(zip_file.name, 'r') as zip_ref:
+            zip_ref.extractall(extract_dir)
+        
+        # Load image and mask
+        image_path = os.path.join(extract_dir, "image.png")
+        mask_path = os.path.join(extract_dir, "mask.png")
+        
+        if not os.path.exists(image_path) or not os.path.exists(mask_path):
+            return None, None, "Zip file must contain image.png and mask.png"
+        
+        image = cv2.imread(image_path)
+        mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
+        
+        if image is None or mask is None:
+            return None, None, "Failed to load image or mask from zip file"
+        
+        current_state['image'] = image
+        current_state['mask'] = mask
+        
+        # Clean up
+        import shutil
+        shutil.rmtree(extract_dir)
+        
+        return Image.fromarray(cv2.cvtColor(image, cv2.COLOR_BGR2RGB)), Image.fromarray(mask), "✅ Files loaded successfully"
+        
+    except Exception as e:
+        return None, None, f"Error loading zip file: {str(e)}"
 
-# Save
-result_image.save("result_mat.png")
-print("MAT inpainting complete!")
-'''
-    return code
+def process_inpainting_placeholder():
+    """Placeholder for MAT inpainting - will be implemented when MAT is properly set up"""
+    if current_state['image'] is None or current_state['mask'] is None:
+        return None, None, "Please load image and mask first"
+    
+    if not MAT_AVAILABLE:
+        return None, None, "MAT model not available. Please run setup.py to install MAT."
+    
+    # For now, return a simple mask overlay as placeholder
+    img = current_state['image']
+    mask = current_state['mask']
+    
+    # Create a simple visualization
+    mask_3ch = cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
+    result = cv2.addWeighted(img, 0.7, mask_3ch, 0.3, 0)
+    
+    current_state['result'] = result
+    
+    # Convert for display
+    original_pil = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+    result_pil = Image.fromarray(cv2.cvtColor(result, cv2.COLOR_BGR2RGB))
+    
+    return original_pil, result_pil, "⚠️ MAT model not fully implemented yet. Showing mask overlay."
 
-# Integration with your workflow
-def integrate_mat_with_room_removal():
-    """
-    How to integrate MAT with your room_removal_ultimate.py
-    """
-    integration_code = '''
-# After getting mask from room_removal_ultimate.py:
-# 1. Export image and mask using export_for_colab
-# 2. Upload to Colab
-# 3. Run MAT inpainting
-# 4. Download result
+def save_result():
+    """Save the current result"""
+    if current_state.get('result') is None:
+        return "No result to save"
+    
+    try:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        result_path = f"results/mat_result_{timestamp}.png"
+        os.makedirs("results", exist_ok=True)
+        
+        cv2.imwrite(result_path, current_state['result'])
+        return f"✅ Result saved to: {result_path}"
+        
+    except Exception as e:
+        return f"❌ Save failed: {str(e)}"
 
-# MAT advantages over LaMa:
-# - Better texture synthesis
-# - Improved structure understanding
-# - Works with modern PyTorch
-# - No dependency conflicts
-'''
-    return integration_code
+def create_ui():
+    """Create Gradio UI for MAT inpainting"""
+    
+    with gr.Blocks(
+        title="MAT Object Removal",
+        theme=gr.themes.Base(),
+        css=".container { max-width: 1400px; margin: auto; }"
+    ) as demo:
+        
+        gr.HTML("""
+        <div style="text-align: center; padding: 20px;">
+            <h1>🎭 MAT Object Removal</h1>
+            <p>High-quality inpainting using MAT (Mask-Aware Transformer) model</p>
+            <p><em>Upload the zip file generated by room_removal_ultimate.py</em></p>
+        </div>
+        """)
+        
+        with gr.Row():
+            with gr.Column(scale=1):
+                zip_upload = gr.File(
+                    label="Upload Zip File",
+                    file_types=[".zip"],
+                    info="Upload the zip file from mask generation step"
+                )
+                
+                with gr.Group():
+                    gr.Markdown("### MAT Parameters")
+                    gr.Markdown("*MAT model setup required - run setup.py first*")
+                    mask_dilate = gr.Slider(
+                        minimum=0, maximum=30, value=10, step=2,
+                        label="Mask Dilation"
+                    )
+                    mask_blur = gr.Slider(
+                        minimum=0, maximum=15, value=5, step=1,
+                        label="Mask Blur"
+                    )
+                
+                process_btn = gr.Button("🎭 Remove Objects", variant="primary", size="lg")
+                save_btn = gr.Button("💾 Save Result", variant="secondary", size="lg")
+                
+                status = gr.Textbox(label="Status", lines=3)
+            
+            with gr.Column(scale=2):
+                with gr.Row():
+                    input_image = gr.Image(label="Original Image", interactive=False)
+                    input_mask = gr.Image(label="Mask", interactive=False)
+                
+                with gr.Row():
+                    original_display = gr.Image(label="Before", interactive=False)
+                    result_display = gr.Image(label="After", interactive=False)
+        
+        # Event handlers
+        def on_upload(zip_file):
+            return load_zip_file(zip_file)
+        
+        zip_upload.upload(
+            on_upload,
+            inputs=[zip_upload],
+            outputs=[input_image, input_mask, status]
+        )
+        
+        process_btn.click(
+            process_inpainting_placeholder,
+            outputs=[original_display, result_display, status]
+        )
+        
+        save_btn.click(save_result, outputs=[status])
+    
+    return demo
 
-print("""
-MAT Setup Guide:
-1. Use mat_inpainting.py setup in Colab
-2. MAT handles large masks better than LaMa
-3. No refinement needed - single pass gives great results
-4. Works with PyTorch 2.0+
-""")
+if __name__ == "__main__":
+    print("🚀 Starting MAT Object Removal")
+    print(f"📍 Device: {device}")
+    print(f"🧠 MAT Available: {MAT_AVAILABLE}")
+    
+    if not MAT_AVAILABLE:
+        print("\n⚠️ MAT not fully set up. Install via setup.py")
+    
+    demo = create_ui()
+    demo.launch(share=False, inbrowser=True)

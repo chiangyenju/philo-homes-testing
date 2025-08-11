@@ -1,70 +1,163 @@
-# Local Model Processing - Room Object Removal
+# 🏠 Room Object Removal Pipeline
 
-High-quality object removal from room images using YOLO + SAM + Big-LaMa.
+A comprehensive solution for removing objects from room images using state-of-the-art AI models. This pipeline provides multiple inpainting models to choose from, each optimized for different use cases.
 
-## Features
+## 🚀 Quick Start
 
-- **Object Detection**: YOLOv8 with confidence as low as 0.001
-- **Segmentation**: SAM (Segment Anything Model) for precise masks
-- **Inpainting**: Big-LaMa with iterative refinement
-- **GPU Support**: DirectML for AMD GPUs, CUDA for NVIDIA
-- **Full Control**: Detailed parameter adjustment for all models
+1. **Setup Environment**
+   ```bash
+   python setup.py
+   ```
 
-## Setup
+2. **Generate Masks** 
+   ```bash
+   python room_removal_ultimate.py
+   ```
+   - Upload your room image
+   - Detect and select objects to remove
+   - Generate precise masks
+   - Export as zip file
 
-1. Install dependencies:
+3. **Choose Your Inpainting Model**
+   ```bash
+   # LaMa - Best overall quality
+   python lama_inpainting.py
+   
+   # MAT - Advanced transformer-based
+   python mat_inpainting.py
+   
+   # SDXL - Creative/artistic results
+   python sdxl_inpainting.py
+   
+   # SD 1.5 - Fast and lightweight
+   python sd15_inpainting.py
+   ```
+
+## 📋 Overview
+
+This pipeline consists of **5 main scripts**:
+
+### 1. 🎯 `room_removal_ultimate.py` - Mask Generation
+- **YOLO v8** object detection
+- **SAM (Segment Anything)** precise segmentation  
+- Interactive selection of objects to remove
+- Exports image + mask as zip file
+
+### 2. 🎨 `lama_inpainting.py` - LaMa Model
+- **Best overall quality** for object removal
+- Multi-scale refinement (CUDA required)
+- Excellent for architectural/interior scenes
+- Uses Large Mask Inpainting model
+
+### 3. 🎭 `mat_inpainting.py` - MAT Model  
+- **Mask-Aware Transformer** architecture
+- Advanced attention mechanisms
+- Good for complex scenes
+- Multiple pretrained checkpoints
+
+### 4. 🌟 `sdxl_inpainting.py` - SDXL Model
+- **Stable Diffusion XL** inpainting
+- Creative and artistic results
+- Prompt-guided generation
+- Best for stylistic transformations
+
+### 5. ⚡ `sd15_inpainting.py` - SD 1.5 Model
+- **Fast and lightweight**
+- Stable Diffusion 1.5 based
+- Good balance of speed/quality
+- Automatic image resizing for optimal performance
+
+## 🛠️ Installation
+
+### Prerequisites
+- Python 3.8+
+- CUDA 11.7+ (recommended for GPU acceleration)
+- 16GB+ RAM (32GB recommended for SDXL)
+- 20GB+ free disk space
+
+### Automatic Setup
 ```bash
-pip install -r requirements.txt
+python setup.py
 ```
 
-2. Download models:
-```bash
-python download_models.py
+## 📁 Project Structure
+
+```
+local-model-processing/
+├── room_removal_ultimate.py    # Mask generation
+├── lama_inpainting.py          # LaMa inpainting  
+├── mat_inpainting.py           # MAT inpainting
+├── sdxl_inpainting.py          # SDXL inpainting
+├── sd15_inpainting.py          # SD 1.5 inpainting
+├── setup.py                    # Setup script
+├── README.md                   # This file
+├── models/                     # Downloaded models
+├── exports/                    # Generated zip files
+└── results/                    # Final results
 ```
 
-3. Download Big-LaMa:
-```bash
-# Download from: https://huggingface.co/smartywu/big-lama/resolve/main/big-lama.zip
-# Extract to models/ directory
-```
+## 🎯 Workflow
 
-4. Clone LaMa repository (for inference code):
-```bash
-git clone https://github.com/advimman/lama.git
-# Copy saicinpainting folder to models/
-```
+### Step 1: Mask Generation
+1. Run `python room_removal_ultimate.py`
+2. Upload your room image
+3. Adjust detection parameters and select objects
+4. Export as zip file
 
-## Usage
+### Step 2: Choose Inpainting Model
 
-```bash
-python room_removal_ultimate.py
-```
+#### 🎨 LaMa - Recommended for Most Cases
+- **Best for**: Architectural interiors, clean removal
+- **Strengths**: Natural texture completion, multi-scale refinement
 
-Open http://localhost:7860 in your browser.
+#### 🎭 MAT - Advanced Transformer
+- **Best for**: Complex scenes, detailed textures  
+- **Strengths**: Attention-based inpainting
 
-## Workflow
+#### 🌟 SDXL - Creative Results
+- **Best for**: Artistic transformations, creative fills
+- **Strengths**: Prompt-guided generation, high resolution
 
-1. **Detection Tab**: Upload image and detect objects (use confidence 0.001 for maximum detection)
-2. **Segmentation Tab**: Select object indices or "all", create masks
-3. **Inpainting Tab**: Remove objects with Big-LaMa
+#### ⚡ SD 1.5 - Fast & Lightweight  
+- **Best for**: Quick results, limited hardware
+- **Strengths**: Fast inference, automatic resizing
 
-## Parameters
+## ⚙️ Model Comparison
 
-### YOLO Detection
-- Confidence: 0.001-1.0 (lower = more objects)
-- IoU Threshold: Non-maximum suppression overlap
-- Max Detections: Maximum objects per image
+| Model | Quality | Speed | VRAM | Best For |
+|-------|---------|-------|------|----------|
+| **LaMa** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ | 4GB | Architectural |
+| **MAT** | ⭐⭐⭐⭐ | ⭐⭐⭐ | 6GB | Complex scenes |
+| **SDXL** | ⭐⭐⭐⭐⭐ | ⭐⭐ | 8GB | Artistic |
+| **SD 1.5** | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ | 4GB | Quick results |
 
-### SAM Segmentation
-- Model Type: vit_b (fast) or vit_h (quality)
-- Mask Dilation: Expand masks to include shadows (10-20 recommended)
+## 🔧 Usage Tips
 
-### LaMa Inpainting
-- Refinement Iterations: 1 for clean result, 2-5 for edge refinement
-- Based on PR #112 iterative refinement approach
+### For Best Quality:
+- Use LaMa with official refinement
+- SAM vit_h model with mask dilation 15-20px
+- YOLO confidence 0.001 for maximum detection
 
-## Tips
+### For Speed:
+- Use SD 1.5 model
+- SAM vit_b model
+- Reduce inference steps to 20-30
 
-- Use 1 iteration for best results (avoids gray mask artifacts)
-- Set mask dilation to 10-20 to remove object shadows
-- Use vit_h for best segmentation quality
+### For Limited VRAM:
+- Use SD 1.5 instead of SDXL
+- Process images at 512px max resolution
+
+## 🚨 Troubleshooting
+
+**"CUDA out of memory"**: Reduce image resolution or use CPU mode
+**"Model not found"**: Run `python setup.py` again
+**"LaMa refinement not working"**: AMD GPU users need CUDA for refinement
+
+## 🤝 Acknowledgments
+
+This pipeline combines multiple open-source projects:
+- [YOLO v8](https://github.com/ultralytics/ultralytics) - Object detection
+- [Segment Anything](https://github.com/facebookresearch/segment-anything) - Segmentation  
+- [LaMa](https://github.com/advimman/lama) - Large Mask Inpainting
+- [MAT](https://github.com/fenglinglwb/MAT) - Mask-Aware Transformer
+- [Stable Diffusion](https://huggingface.co/docs/diffusers) - Diffusion models

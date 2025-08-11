@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python:*)",
+      "WebFetch(domain:www.roomarranger.com)",
+      "WebFetch(domain:fileproinfo.com)",
+      "Bash(del:*)",
+      "Bash(rm:*)",
+      "Bash(pip install:*)"
+    ],
+    "deny": []
+  }
+}

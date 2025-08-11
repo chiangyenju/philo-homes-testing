@@ -1,0 +1,184 @@
+[
+  {
+    "room_id": "room_20250811_171727",
+    "timestamp": "2025-08-11 17:17:27",
+    "object_count": 12,
+    "objects": [
+      {
+        "object": "Bedside Table",
+        "dimensions": "16 1/8\"x23 5/8\"x25 31/32\"",
+        "x": 176.77,
+        "y": 100.75,
+        "z": 0.0
+      },
+      {
+        "object": "Bedside Table",
+        "dimensions": "16 1/8\"x23 5/8\"x25 31/32\"",
+        "x": 176.77,
+        "y": 1.44,
+        "z": 0.0
+      },
+      {
+        "object": "Chair",
+        "dimensions": "21 1/4\"x22 1/16\"x29 1/8\"",
+        "x": 15.95,
+        "y": 47.18,
+        "z": 0.0
+      },
+      {
+        "object": "Chair",
+        "dimensions": "21 1/4\"x22 1/16\"x29 1/8\"",
+        "x": 16.17,
+        "y": 98.75,
+        "z": 0.0
+      },
+      {
+        "object": "Chest of Drawers",
+        "dimensions": "24\"x16\"x32\"",
+        "x": -256.5,
+        "y": -162.5,
+        "z": 0.0
+      },
+      {
+        "object": "Door",
+        "dimensions": "36\"x2\"x78\"",
+        "x": 51.0,
+        "y": 166.42,
+        "z": 0.0
+      },
+      {
+        "object": "Double Bed",
+        "dimensions": "75 19/32\"x85 1/32\"x59 1/16\"",
+        "x": 192.91,
+        "y": 25.25,
+        "z": 0.0
+      },
+      {
+        "object": "Round Table",
+        "dimensions": "16 9/16\"x16 9/16\"x29\"",
+        "x": 44.39,
+        "y": 51.83,
+        "z": 0.0
+      },
+      {
+        "object": "Wardrobe",
+        "dimensions": "78 3/4\"x22 7/16\"x79\"",
+        "x": 104.94,
+        "y": 138.98,
+        "z": 0.0
+      },
+      {
+        "object": "Window",
+        "dimensions": "47 1/4\"x5\"x52\"",
+        "x": 1.0,
+        "y": -5.0,
+        "z": 36.0
+      },
+      {
+        "object": "Window",
+        "dimensions": "47 1/4\"x5\"x52\"",
+        "x": 144.97,
+        "y": -5.0,
+        "z": 36.0
+      },
+      {
+        "object": "Window",
+        "dimensions": "59 1/16\"x5\"x52\"",
+        "x": 67.0,
+        "y": -5.0,
+        "z": 36.0
+      }
+    ]
+  },
+  {
+    "room_id": "room_20250811_171823",
+    "timestamp": "2025-08-11 17:18:23",
+    "object_count": 12,
+    "objects": [
+      {
+        "object": "Bedside Table",
+        "dimensions": "16 1/8\"x23 5/8\"x25 31/32\"",
+        "x": 176.77,
+        "y": 100.75,
+        "z": 0.0
+      },
+      {
+        "object": "Bedside Table",
+        "dimensions": "16 1/8\"x23 5/8\"x25 31/32\"",
+        "x": 176.77,
+        "y": 1.44,
+        "z": 0.0
+      },
+      {
+        "object": "Chair",
+        "dimensions": "21 1/4\"x22 1/16\"x29 1/8\"",
+        "x": 15.95,
+        "y": 47.18,
+        "z": 0.0
+      },
+      {
+        "object": "Chair",
+        "dimensions": "21 1/4\"x22 1/16\"x29 1/8\"",
+        "x": 16.17,
+        "y": 98.75,
+        "z": 0.0
+      },
+      {
+        "object": "Chest of Drawers",
+        "dimensions": "24\"x16\"x32\"",
+        "x": -256.5,
+        "y": -162.5,
+        "z": 0.0
+      },
+      {
+        "object": "Door",
+        "dimensions": "36\"x2\"x78\"",
+        "x": 51.0,
+        "y": 166.42,
+        "z": 0.0
+      },
+      {
+        "object": "Double Bed",
+        "dimensions": "75 19/32\"x85 1/32\"x59 1/16\"",
+        "x": 192.91,
+        "y": 25.25,
+        "z": 0.0
+      },
+      {
+        "object": "Round Table",
+        "dimensions": "16 9/16\"x16 9/16\"x29\"",
+        "x": 44.39,
+        "y": 51.83,
+        "z": 0.0
+      },
+      {
+        "object": "Wardrobe",
+        "dimensions": "78 3/4\"x22 7/16\"x79\"",
+        "x": 104.94,
+        "y": 138.98,
+        "z": 0.0
+      },
+      {
+        "object": "Window",
+        "dimensions": "47 1/4\"x5\"x52\"",
+        "x": 1.0,
+        "y": -5.0,
+        "z": 36.0
+      },
+      {
+        "object": "Window",
+        "dimensions": "47 1/4\"x5\"x52\"",
+        "x": 144.97,
+        "y": -5.0,
+        "z": 36.0
+      },
+      {
+        "object": "Window",
+        "dimensions": "59 1/16\"x5\"x52\"",
+        "x": 67.0,
+        "y": -5.0,
+        "z": 36.0
+      }
+    ]
+  }
+]

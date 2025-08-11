@@ -5,7 +5,12 @@
       "Bash(rm:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "WebFetch(domain:www.iopaint.com)",
+      "Bash(dism.exe:*)",
+      "Bash(wsl:*)",
+      "Bash(git rm:*)",
+      "Bash(true)"
     ],
     "deny": []
   }

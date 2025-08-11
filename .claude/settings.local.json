@@ -22,7 +22,10 @@
       "WebFetch(domain:github.com)",
       "Bash(del \"C:\\Users\\Andrew\\philo-homes-testing\\local-model-processing\\check_torch.py\")",
       "Bash(dir:*)",
-      "Bash(true)"
+      "Bash(true)",
+      "Bash(git restore:*)",
+      "Bash(git clean:*)",
+      "Bash(git pull:*)"
     ],
     "deny": []
   }
