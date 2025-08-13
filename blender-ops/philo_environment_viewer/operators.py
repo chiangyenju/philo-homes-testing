@@ -7,6 +7,7 @@ import os
 import math
 from mathutils import Vector
 from bpy.types import Operator
+from collections import Counter
 
 class ENV_OT_load_environment(Operator):
     bl_idname = "env.load_environment"
@@ -330,26 +331,52 @@ class ENV_OT_import_furniture(Operator):
                     context.view_layer.objects.active = obj
                     bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
             
-            # Set furniture parent origin to center bottom
+            # Find the actual bottom of the furniture model by checking all vertices
+            furniture_min_z = float('inf')
+            furniture_max_z = float('-inf')
+            furniture_min_x = float('inf')
+            furniture_max_x = float('-inf')
+            furniture_min_y = float('inf')
+            furniture_max_y = float('-inf')
+            
+            for obj in new_objects:
+                if obj.type == 'MESH':
+                    # Update mesh to ensure correct vertex positions
+                    obj.data.update()
+                    # Get world coordinates of all vertices
+                    for vert in obj.data.vertices:
+                        world_co = obj.matrix_world @ vert.co
+                        furniture_min_z = min(furniture_min_z, world_co.z)
+                        furniture_max_z = max(furniture_max_z, world_co.z)
+                        furniture_min_x = min(furniture_min_x, world_co.x)
+                        furniture_max_x = max(furniture_max_x, world_co.x)
+                        furniture_min_y = min(furniture_min_y, world_co.y)
+                        furniture_max_y = max(furniture_max_y, world_co.y)
+            
+            # Calculate furniture center
+            furniture_center_x = (furniture_min_x + furniture_max_x) / 2
+            furniture_center_y = (furniture_min_y + furniture_max_y) / 2
+            
+            # Set furniture parent origin to bottom center
             bpy.ops.object.select_all(action='DESELECT')
             furniture.select_set(True)
             context.view_layer.objects.active = furniture
-            bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
             
-            # Get the current bounds to adjust origin to bottom
-            bbox = [furniture.matrix_world @ Vector(corner) for corner in furniture.bound_box]
-            min_z = min(corner.z for corner in bbox)
-            center_x = sum(corner.x for corner in bbox) / 8
-            center_y = sum(corner.y for corner in bbox) / 8
-            
-            # Move origin to bottom center
+            # Move origin to the actual bottom center of the furniture
             cursor_loc = context.scene.cursor.location.copy()
-            context.scene.cursor.location = (center_x, center_y, min_z)
+            context.scene.cursor.location = (furniture_center_x, furniture_center_y, furniture_min_z)
             bpy.ops.object.origin_set(type='ORIGIN_CURSOR')
             context.scene.cursor.location = cursor_loc
             
-            # Now furniture bottom is at origin Z
-            min_z = 0
+            # After changing origin, recalculate the actual bottom position
+            # The furniture's location has changed after setting origin
+            furniture_actual_min_z = float('inf')
+            for obj in new_objects:
+                if obj.type == 'MESH':
+                    obj.data.update()
+                    for vert in obj.data.vertices:
+                        world_co = obj.matrix_world @ vert.co
+                        furniture_actual_min_z = min(furniture_actual_min_z, world_co.z)
             
             # Get room bounds to place furniture inside
             room_parent = None
@@ -359,25 +386,83 @@ class ENV_OT_import_furniture(Operator):
                     break
             
             if room_parent:
-                # Calculate room center and safe placement area
-                room_min = Vector((float('inf'),) * 3)
-                room_max = Vector((float('-inf'),) * 3)
+                # Find room bounds including the actual floor level
+                room_min_x = float('inf')
+                room_max_x = float('-inf')
+                room_min_y = float('inf')
+                room_max_y = float('-inf')
+                room_min_z = float('inf')
+                room_max_z = float('-inf')
+                
+                # Find all room vertices to get bounds
+                all_z_values = []
+                floor_vertices = []  # Store potential floor vertices
                 
                 for child in room_parent.children:
                     if child.type == 'MESH':
+                        child.data.update()  # Ensure mesh is updated
                         for vert in child.data.vertices:
                             world_co = child.matrix_world @ vert.co
-                            room_min = Vector((min(room_min[i], world_co[i]) for i in range(3)))
-                            room_max = Vector((max(room_max[i], world_co[i]) for i in range(3)))
+                            room_min_x = min(room_min_x, world_co.x)
+                            room_max_x = max(room_max_x, world_co.x)
+                            room_min_y = min(room_min_y, world_co.y)
+                            room_max_y = max(room_max_y, world_co.y)
+                            room_min_z = min(room_min_z, world_co.z)
+                            room_max_z = max(room_max_z, world_co.z)
+                            all_z_values.append(world_co.z)
+                            
+                            # Store vertices that might be part of the floor
+                            if world_co.z < room_min_z + 0.5:  # Within 0.5 units of minimum
+                                floor_vertices.append(world_co.z)
                 
-                # Place furniture in center of room, slightly above floor to avoid z-fighting
-                room_center = (room_min + room_max) / 2
-                furniture.location.x = room_center.x
-                furniture.location.y = room_center.y
-                furniture.location.z = 0.001  # Slightly above floor to avoid z-fighting
+                # Detect floor surface more accurately
+                room_height = room_max_z - room_min_z
+                
+                # Method 1: Find the most common Z value in the bottom region (likely the floor)
+                if floor_vertices:
+                    # Round values to handle minor variations
+                    rounded_floor_z = [round(z, 2) for z in floor_vertices]
+                    # Find most common Z value (the actual floor surface)
+                    from collections import Counter
+                    z_counts = Counter(rounded_floor_z)
+                    most_common_z = z_counts.most_common(1)[0][0]
+                    room_floor_z = most_common_z
+                else:
+                    # Method 2: Use percentile approach
+                    all_z_values.sort()
+                    # Find floor surface: vertices in the bottom 10% of room height
+                    floor_threshold = room_min_z + (room_height * 0.1)
+                    floor_surface_z_values = [z for z in all_z_values if z <= floor_threshold]
+                    
+                    if floor_surface_z_values:
+                        # Get the top of the floor (highest point in floor region)
+                        room_floor_z = max(floor_surface_z_values)
+                    else:
+                        # Fallback to absolute minimum if no floor detected
+                        room_floor_z = room_min_z
+                
+                room_center_x = (room_min_x + room_max_x) / 2
+                room_center_y = (room_min_y + room_max_y) / 2
+                
+                # Calculate the offset needed to place furniture on floor
+                # The furniture's actual bottom might be below its origin after the origin change
+                furniture_bottom_offset = furniture_actual_min_z - furniture.location.z
+                
+                # Debug information
+                print(f"Room bounds: Z min={room_min_z:.3f}, Z max={room_max_z:.3f}")
+                print(f"Floor detected at Z={room_floor_z:.3f}")
+                print(f"Furniture actual bottom at Z={furniture_actual_min_z:.3f}")
+                print(f"Furniture origin at Z={furniture.location.z:.3f}")
+                print(f"Bottom offset: {furniture_bottom_offset:.3f}")
+                
+                # Place furniture so its actual bottom sits on the floor surface
+                furniture.location.x = room_center_x
+                furniture.location.y = room_center_y
+                # Adjust Z position so the actual bottom (not origin) sits on floor
+                furniture.location.z = room_floor_z - furniture_bottom_offset
             else:
-                # Fallback if no room found
-                furniture.location.z = 0.001  # Slightly above floor
+                # Fallback if no room found - place at origin
+                furniture.location = (0, 0, 0.001)
             
             # Select for easy positioning
             bpy.ops.object.select_all(action='DESELECT')
