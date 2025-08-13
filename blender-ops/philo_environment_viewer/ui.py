@@ -49,6 +49,15 @@ class ENV_PT_main(Panel):
         row = box.row(align=True)
         row.operator("env.setup_camera", text="Add Camera", icon='CAMERA_DATA')
         row.operator("env.render_snapshot", text="Render", icon='RENDER_STILL')
+        
+        box.separator()
+        box.label(text="Dynamic Transparency:", icon='SHADING_RENDERED')
+        
+        row = box.row(align=True)
+        row.operator("env.dynamic_transparency", text="Enable", icon='HIDE_OFF')
+        row.operator("env.reset_wall_transparency", text="Disable", icon='HIDE_ON')
+        
+        box.label(text="Auto-updates with view angle", icon='INFO')
         box.label(text="Numpad 0: Camera view", icon='INFO')
 
 def register():
