@@ -1,183 +1,531 @@
 [
   {
-    "room_id": "room_20250811_171727",
-    "timestamp": "2025-08-11 17:17:27",
+    "room_id": "bedroom-1",
+    "timestamp": "2025-08-18 18:10:05",
     "object_count": 12,
+    "source_file": "bedroom-1.rap",
     "objects": [
       {
-        "object": "Bedside Table",
-        "dimensions": "16 1/8\"x23 5/8\"x25 31/32\"",
-        "x": 176.77,
-        "y": 100.75,
-        "z": 0.0
+        "object": "Window",
+        "dimensions": "119.99x12.7x132.08",
+        "x": 2.54,
+        "y": -12.7,
+        "z": 91.44
       },
       {
-        "object": "Bedside Table",
-        "dimensions": "16 1/8\"x23 5/8\"x25 31/32\"",
-        "x": 176.77,
-        "y": 1.44,
-        "z": 0.0
+        "object": "Window",
+        "dimensions": "119.99x12.7x132.08",
+        "x": 368.22,
+        "y": -12.7,
+        "z": 91.44
       },
       {
-        "object": "Chair",
-        "dimensions": "21 1/4\"x22 1/16\"x29 1/8\"",
-        "x": 15.95,
-        "y": 47.18,
-        "z": 0.0
+        "object": "Window",
+        "dimensions": "150.01x12.7x132.08",
+        "x": 170.18,
+        "y": -12.7,
+        "z": 91.44
       },
       {
-        "object": "Chair",
-        "dimensions": "21 1/4\"x22 1/16\"x29 1/8\"",
-        "x": 16.17,
-        "y": 98.75,
+        "object": "Double Bed",
+        "dimensions": "192x216x150.01",
+        "x": 489.99,
+        "y": 64.14,
         "z": 0.0
       },
       {
         "object": "Chest of Drawers",
-        "dimensions": "24\"x16\"x32\"",
-        "x": -256.5,
-        "y": -162.5,
-        "z": 0.0
-      },
-      {
-        "object": "Door",
-        "dimensions": "36\"x2\"x78\"",
-        "x": 51.0,
-        "y": 166.42,
-        "z": 0.0
-      },
-      {
-        "object": "Double Bed",
-        "dimensions": "75 19/32\"x85 1/32\"x59 1/16\"",
-        "x": 192.91,
-        "y": 25.25,
-        "z": 0.0
-      },
-      {
-        "object": "Round Table",
-        "dimensions": "16 9/16\"x16 9/16\"x29\"",
-        "x": 44.39,
-        "y": 51.83,
+        "dimensions": "60.96x40.64x81.28",
+        "x": -651.51,
+        "y": -412.75,
         "z": 0.0
       },
       {
         "object": "Wardrobe",
-        "dimensions": "78 3/4\"x22 7/16\"x79\"",
-        "x": 104.94,
-        "y": 138.98,
+        "dimensions": "200x57x200.66",
+        "x": 266.55,
+        "y": 353.01,
         "z": 0.0
       },
       {
-        "object": "Window",
-        "dimensions": "47 1/4\"x5\"x52\"",
-        "x": 1.0,
-        "y": -5.0,
-        "z": 36.0
+        "object": "Chair",
+        "dimensions": "54x56.01x73.99",
+        "x": 40.51,
+        "y": 119.84,
+        "z": 0.0
       },
       {
-        "object": "Window",
-        "dimensions": "47 1/4\"x5\"x52\"",
-        "x": 144.97,
-        "y": -5.0,
-        "z": 36.0
+        "object": "Bedside Table",
+        "dimensions": "41x59.99x65.99",
+        "x": 449.0,
+        "y": 255.91,
+        "z": 0.0
       },
       {
-        "object": "Window",
-        "dimensions": "59 1/16\"x5\"x52\"",
-        "x": 67.0,
-        "y": -5.0,
-        "z": 36.0
+        "object": "Bedside Table",
+        "dimensions": "41x59.99x65.99",
+        "x": 449.0,
+        "y": 3.66,
+        "z": 0.0
+      },
+      {
+        "object": "Door",
+        "dimensions": "91.44x5.08x198.12",
+        "x": 129.54,
+        "y": 422.71,
+        "z": 0.0
+      },
+      {
+        "object": "Round Table",
+        "dimensions": "42.06x42.06x73.66",
+        "x": 112.75,
+        "y": 131.65,
+        "z": 0.0
+      },
+      {
+        "object": "Chair",
+        "dimensions": "54x56.01x73.99",
+        "x": 41.07,
+        "y": 250.83,
+        "z": 0.0
       }
     ]
   },
   {
-    "room_id": "room_20250811_171823",
-    "timestamp": "2025-08-11 17:18:23",
-    "object_count": 12,
+    "room_id": "bedroom-2",
+    "timestamp": "2025-08-18 18:10:41",
+    "object_count": 13,
+    "source_file": "bedroom-2.rap",
     "objects": [
       {
-        "object": "Bedside Table",
-        "dimensions": "16 1/8\"x23 5/8\"x25 31/32\"",
-        "x": 176.77,
-        "y": 100.75,
-        "z": 0.0
+        "object": "Window",
+        "dimensions": "119.99x12.7x132.08",
+        "x": 2.54,
+        "y": -12.7,
+        "z": 91.44
       },
       {
-        "object": "Bedside Table",
-        "dimensions": "16 1/8\"x23 5/8\"x25 31/32\"",
-        "x": 176.77,
-        "y": 1.44,
-        "z": 0.0
+        "object": "Window",
+        "dimensions": "119.99x12.7x132.08",
+        "x": 368.22,
+        "y": -12.7,
+        "z": 91.44
       },
       {
-        "object": "Chair",
-        "dimensions": "21 1/4\"x22 1/16\"x29 1/8\"",
-        "x": 15.95,
-        "y": 47.18,
-        "z": 0.0
+        "object": "Window",
+        "dimensions": "150.01x12.7x132.08",
+        "x": 170.18,
+        "y": -12.7,
+        "z": 91.44
       },
       {
-        "object": "Chair",
-        "dimensions": "21 1/4\"x22 1/16\"x29 1/8\"",
-        "x": 16.17,
-        "y": 98.75,
+        "object": "Double Bed",
+        "dimensions": "192x216x150.01",
+        "x": 0.0,
+        "y": 272.64,
         "z": 0.0
       },
       {
         "object": "Chest of Drawers",
-        "dimensions": "24\"x16\"x32\"",
-        "x": -256.5,
-        "y": -162.5,
-        "z": 0.0
-      },
-      {
-        "object": "Door",
-        "dimensions": "36\"x2\"x78\"",
-        "x": 51.0,
-        "y": 166.42,
-        "z": 0.0
-      },
-      {
-        "object": "Double Bed",
-        "dimensions": "75 19/32\"x85 1/32\"x59 1/16\"",
-        "x": 192.91,
-        "y": 25.25,
-        "z": 0.0
-      },
-      {
-        "object": "Round Table",
-        "dimensions": "16 9/16\"x16 9/16\"x29\"",
-        "x": 44.39,
-        "y": 51.83,
+        "dimensions": "60.96x40.64x81.28",
+        "x": -651.51,
+        "y": -412.75,
         "z": 0.0
       },
       {
         "object": "Wardrobe",
-        "dimensions": "78 3/4\"x22 7/16\"x79\"",
-        "x": 104.94,
-        "y": 138.98,
+        "dimensions": "200x57x200.66",
+        "x": 432.99,
+        "y": 271.32,
+        "z": 0.0
+      },
+      {
+        "object": "Chair",
+        "dimensions": "54x56.01x73.99",
+        "x": 476.71,
+        "y": 358.75,
+        "z": 0.0
+      },
+      {
+        "object": "Bedside Table",
+        "dimensions": "41x59.99x65.99",
+        "x": 0.0,
+        "y": 272.42,
+        "z": 0.0
+      },
+      {
+        "object": "Bedside Table",
+        "dimensions": "41x59.99x65.99",
+        "x": 0.0,
+        "y": 20.8,
+        "z": 0.0
+      },
+      {
+        "object": "Door",
+        "dimensions": "91.44x5.08x198.12",
+        "x": 129.54,
+        "y": 422.71,
+        "z": 0.0
+      },
+      {
+        "object": "Round Table",
+        "dimensions": "42.06x42.06x73.66",
+        "x": 328.02,
+        "y": 290.4,
+        "z": 0.0
+      },
+      {
+        "object": "Chair",
+        "dimensions": "54x56.01x73.99",
+        "x": 256.97,
+        "y": 399.87,
+        "z": 0.0
+      },
+      {
+        "object": "Chair",
+        "dimensions": "54x56.01x73.99",
+        "x": 314.63,
+        "y": 17.73,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "room_id": "bedroom-3",
+    "timestamp": "2025-08-18 18:11:17",
+    "object_count": 13,
+    "source_file": "bedroom-3.rap",
+    "objects": [
+      {
+        "object": "Window",
+        "dimensions": "119.99x12.7x132.08",
+        "x": 2.54,
+        "y": -12.7,
+        "z": 91.44
+      },
+      {
+        "object": "Window",
+        "dimensions": "119.99x12.7x132.08",
+        "x": 368.22,
+        "y": -12.7,
+        "z": 91.44
+      },
+      {
+        "object": "Window",
+        "dimensions": "150.01x12.7x132.08",
+        "x": 170.18,
+        "y": -12.7,
+        "z": 91.44
+      },
+      {
+        "object": "Double Bed",
+        "dimensions": "192x216x150.01",
+        "x": 152.96,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "object": "Chest of Drawers",
+        "dimensions": "60.96x40.64x81.28",
+        "x": -651.51,
+        "y": -412.75,
+        "z": 0.0
+      },
+      {
+        "object": "Wardrobe",
+        "dimensions": "200x57x200.66",
+        "x": 0.0,
+        "y": 286.56,
+        "z": 0.0
+      },
+      {
+        "object": "Chair",
+        "dimensions": "54x56.01x73.99",
+        "x": 483.69,
+        "y": 361.29,
+        "z": 0.0
+      },
+      {
+        "object": "Bedside Table",
+        "dimensions": "41x59.99x65.99",
+        "x": 152.1,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "object": "Bedside Table",
+        "dimensions": "41x59.99x65.99",
+        "x": 344.83,
+        "y": 41.0,
+        "z": 0.0
+      },
+      {
+        "object": "Door",
+        "dimensions": "91.44x5.08x198.12",
+        "x": 129.54,
+        "y": 422.71,
+        "z": 0.0
+      },
+      {
+        "object": "Round Table",
+        "dimensions": "42.06x42.06x73.66",
+        "x": 389.61,
+        "y": 262.46,
+        "z": 0.0
+      },
+      {
+        "object": "Chair",
+        "dimensions": "54x56.01x73.99",
+        "x": 277.7,
+        "y": 401.04,
+        "z": 0.0
+      },
+      {
+        "object": "Chair",
+        "dimensions": "54x56.01x73.99",
+        "x": 461.06,
+        "y": 152.1,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "room_id": "bedroom-for-demo-1",
+    "timestamp": "2025-08-18 18:11:53",
+    "object_count": 17,
+    "source_file": "bedroom-for-demo-1.rap",
+    "objects": [
+      {
+        "object": "Window",
+        "dimensions": "180x10x120",
+        "x": 75.0,
+        "y": -10.0,
+        "z": 85.0
+      },
+      {
+        "object": "Master Bedroom King Bed",
+        "dimensions": "189x225x112",
+        "x": 63.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "object": "Minimalist Nightstand",
+        "dimensions": "41x45x49.5",
+        "x": 12.0,
+        "y": 47.0,
+        "z": 0.0
+      },
+      {
+        "object": "Door",
+        "dimensions": "91x5.08x198.12",
+        "x": 156.0,
+        "y": 621.0,
+        "z": 0.0
+      },
+      {
+        "object": "Door",
+        "dimensions": "91.44x5.08x198.12",
+        "x": 263.0,
+        "y": 621.44,
+        "z": 0.0
+      },
+      {
+        "object": "Rug",
+        "dimensions": "260x300x1",
+        "x": 22.0,
+        "y": 44.0,
+        "z": 0.0
+      },
+      {
+        "object": "French Vintage Storage Cabinet",
+        "dimensions": "40x180x85",
+        "x": 275.0,
+        "y": 340.0,
+        "z": 0.0
+      },
+      {
+        "object": "Door",
+        "dimensions": "91.44x5.08x198.12",
+        "x": -10.0,
+        "y": 509.0,
+        "z": 0.0
+      },
+      {
+        "object": "Lounge Chair",
+        "dimensions": "75x80x35",
+        "x": 145.0,
+        "y": 428.0,
+        "z": 0.0
+      },
+      {
+        "object": "Modern Minimalist Solid Wood Bed Bench",
+        "dimensions": "170x50x45",
+        "x": 72.0,
+        "y": 218.0,
+        "z": 0.0
+      },
+      {
+        "object": "Minimalist Nightstand",
+        "dimensions": "41x45x49.5",
+        "x": 257.0,
+        "y": 47.0,
+        "z": 0.0
+      },
+      {
+        "object": "Vintage Solid Wood Side Table",
+        "dimensions": "33x33x45",
+        "x": 185.0,
+        "y": 327.0,
+        "z": 0.0
+      },
+      {
+        "object": "Minimalist Coordinated Bedding Set",
+        "dimensions": "172x203x5",
+        "x": 72.0,
+        "y": 10.0,
+        "z": 0.0
+      },
+      {
+        "object": "Natural Stone Base with Linen Shade Table Lamp",
+        "dimensions": "15x15x58",
+        "x": 27.0,
+        "y": 18.0,
+        "z": 49.5
+      },
+      {
+        "object": "Natural Stone Base with Linen Shade Table Lamp",
+        "dimensions": "15x15x58",
+        "x": 263.0,
+        "y": 18.0,
+        "z": 49.5
+      },
+      {
+        "object": "ceramic vase with everlasting botanicals",
+        "dimensions": "12x12x50",
+        "x": 42.0,
+        "y": 34.0,
+        "z": 49.5
+      },
+      {
+        "object": "Organic Bedroom Decor with Natural scenery",
+        "dimensions": "150x4x75",
+        "x": 315.0,
+        "y": 68.0,
+        "z": 120.0
+      }
+    ]
+  },
+  {
+    "room_id": "bedroom-for-demo-2",
+    "timestamp": "2025-08-18 18:12:30",
+    "object_count": 15,
+    "source_file": "bedroom-for-demo-2.rap",
+    "objects": [
+      {
+        "object": "Geometric Rug",
+        "dimensions": "260x300x1",
+        "x": 45.0,
+        "y": 0.0,
         "z": 0.0
       },
       {
         "object": "Window",
-        "dimensions": "47 1/4\"x5\"x52\"",
-        "x": 1.0,
-        "y": -5.0,
-        "z": 36.0
+        "dimensions": "180x10x120",
+        "x": 75.0,
+        "y": -10.0,
+        "z": 90.0
       },
       {
-        "object": "Window",
-        "dimensions": "47 1/4\"x5\"x52\"",
-        "x": 144.97,
-        "y": -5.0,
-        "z": 36.0
+        "object": "Door",
+        "dimensions": "91.44x5.08x198.12",
+        "x": -10.0,
+        "y": 509.0,
+        "z": 0.0
       },
       {
-        "object": "Window",
-        "dimensions": "59 1/16\"x5\"x52\"",
-        "x": 67.0,
-        "y": -5.0,
-        "z": 36.0
+        "object": "American Traditional King Bed",
+        "dimensions": "205.5x225x55.5",
+        "x": 0.0,
+        "y": 257.0,
+        "z": 0.0
+      },
+      {
+        "object": "American Traditional Nightstand",
+        "dimensions": "41x58x63",
+        "x": 58.0,
+        "y": 259.0,
+        "z": 0.0
+      },
+      {
+        "object": "Vintage Bedside Lamp",
+        "dimensions": "14x14x60",
+        "x": 13.0,
+        "y": 270.0,
+        "z": 63.0
+      },
+      {
+        "object": "Vintage Minimalist Wood Lounge Chair",
+        "dimensions": "61x60x86",
+        "x": 110.0,
+        "y": 398.0,
+        "z": 0.0
+      },
+      {
+        "object": "Vintage Minimalist Wood footstool",
+        "dimensions": "40x40x28",
+        "x": 142.0,
+        "y": 302.0,
+        "z": 0.0
+      },
+      {
+        "object": "American Traditional Nightstand",
+        "dimensions": "41x58x63",
+        "x": 58.0,
+        "y": 9.0,
+        "z": 0.0
+      },
+      {
+        "object": "Vintage Bedside Lamp",
+        "dimensions": "14x14x60",
+        "x": 15.0,
+        "y": 21.0,
+        "z": 63.0
+      },
+      {
+        "object": "American Dresser",
+        "dimensions": "42.5x145x75",
+        "x": 272.5,
+        "y": 301.0,
+        "z": 0.0
+      },
+      {
+        "object": "Door",
+        "dimensions": "91.44x5.08x198.12",
+        "x": 156.0,
+        "y": 621.44,
+        "z": 0.0
+      },
+      {
+        "object": "Door",
+        "dimensions": "91.44x5.08x198.12",
+        "x": 263.0,
+        "y": 621.44,
+        "z": 0.0
+      },
+      {
+        "object": "Organic Bedroom Decor with Natural scenery",
+        "dimensions": "100x2x100",
+        "x": 2.0,
+        "y": 54.0,
+        "z": 100.0
+      },
+      {
+        "object": "Organic Bedroom Decor with Natural scenery",
+        "dimensions": "100x2x100",
+        "x": 2.0,
+        "y": 156.0,
+        "z": 100.0
       }
     ]
   }
