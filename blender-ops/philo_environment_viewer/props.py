@@ -36,7 +36,7 @@ def register():
         description="Scale furniture to fit room",
         default=0.01,
         min=0.001,
-        max=1.0,
+        max=5.0,
         precision=3
     )
 
