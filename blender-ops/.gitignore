@@ -10,3 +10,19 @@
 __pycache__/
 *.pyc
 
+# Rendered images (can be large)
+rendered-images/
+snapshots/
+templates/
+
+# Textures and assets
+texture/
+*.exr
+*.hdr
+
+# Deployment folders
+netlify-deploy/
+
+# Local settings
+.claude/
+
