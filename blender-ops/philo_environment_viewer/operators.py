@@ -47,7 +47,7 @@ class ENV_OT_load_environment(Operator):
             # Apply scale
             room_parent.scale = (scene.env_room_scale,) * 3
             
-            # Fix rotation - rotate 90 degrees on X axis to stand upright
+            # Rotate 90 degrees on X axis to stand upright
             room_parent.rotation_euler = (math.radians(90), 0, 0)
             
             # Apply rotation and scale
@@ -150,7 +150,7 @@ class ENV_OT_apply_lighting(Operator):
             bpy.ops.object.light_add(type='AREA', location=key_pos)
             key = context.active_object
             key.name = "Key_Light"
-            key.data.energy = 1200
+            key.data.energy = 400
             key.data.size = min(room_size.x, room_size.y) * 0.25
             key.data.color = (1, 0.95, 0.85)  # Warm daylight
             key.rotation_euler = (math.radians(65), 0, math.radians(-30))
@@ -164,7 +164,7 @@ class ENV_OT_apply_lighting(Operator):
             bpy.ops.object.light_add(type='AREA', location=fill_pos)
             fill = context.active_object
             fill.name = "Fill_Light"
-            fill.data.energy = 600
+            fill.data.energy = 200
             fill.data.size = min(room_size.x, room_size.y) * 0.5  # Larger for softer shadows
             fill.data.color = (0.85, 0.9, 1)  # Cool sky light
             fill.rotation_euler = (math.radians(70), 0, math.radians(120))
@@ -178,7 +178,7 @@ class ENV_OT_apply_lighting(Operator):
             bpy.ops.object.light_add(type='AREA', location=ceiling_pos)
             ceiling = context.active_object
             ceiling.name = "Ceiling_Bounce"
-            ceiling.data.energy = 300
+            ceiling.data.energy = 100
             ceiling.data.size = min(room_size.x, room_size.y) * 0.7  # Very large for soft light
             ceiling.data.color = (0.98, 0.98, 1)  # Neutral white
             ceiling.rotation_euler = (math.radians(180), 0, 0)  # Point down
@@ -192,7 +192,7 @@ class ENV_OT_apply_lighting(Operator):
             bpy.ops.object.light_add(type='POINT', location=lamp_pos1)
             lamp1 = context.active_object
             lamp1.name = "Table_Lamp_1"
-            lamp1.data.energy = 100
+            lamp1.data.energy = 30
             lamp1.data.color = (1, 0.9, 0.75)  # Warm incandescent
             lamp1.data.shadow_soft_size = 0.3
             
@@ -205,7 +205,7 @@ class ENV_OT_apply_lighting(Operator):
             bpy.ops.object.light_add(type='POINT', location=lamp_pos2)
             lamp2 = context.active_object
             lamp2.name = "Floor_Lamp"
-            lamp2.data.energy = 120
+            lamp2.data.energy = 40
             lamp2.data.color = (1, 0.95, 0.9)
             lamp2.data.shadow_soft_size = 0.4
             
@@ -279,20 +279,20 @@ class ENV_OT_import_furniture(Operator):
     bl_label = "Import Furniture"
     bl_description = "Import furniture model"
     bl_options = {'REGISTER', 'UNDO'}
-    
+
     def execute(self, context):
         scene = context.scene
         filepath = scene.env_furniture_path
-        
+
         if not filepath or not os.path.exists(bpy.path.abspath(filepath)):
             self.report({'ERROR'}, "Please select a valid model file")
             return {'CANCELLED'}
-        
+
         filepath = bpy.path.abspath(filepath)
-        
+
         # Store current objects
         before = set(context.scene.objects)
-        
+
         # Import model
         if filepath.lower().endswith(('.glb', '.gltf')):
             bpy.ops.import_scene.gltf(filepath=filepath)
@@ -300,83 +300,83 @@ class ENV_OT_import_furniture(Operator):
             bpy.ops.import_scene.fbx(filepath=filepath)
         elif filepath.lower().endswith('.obj'):
             bpy.ops.wm.obj_import(filepath=filepath)
-        
+
         # Get new objects
         new_objects = list(set(context.scene.objects) - before)
-        
+
         if new_objects:
-            # Create furniture parent
-            bpy.ops.object.empty_add(location=(0, 0, 0))
-            furniture = context.active_object
-            furniture.name = f"Furniture_{os.path.basename(filepath).split('.')[0]}"
-            
-            # Parent all parts
-            for obj in new_objects:
-                obj.parent = furniture
-            
-            # Apply scale
-            furniture.scale = (scene.env_furniture_scale,) * 3
-            
-            # Apply scale to get correct bounds
-            bpy.ops.object.select_all(action='DESELECT')
-            furniture.select_set(True)
-            context.view_layer.objects.active = furniture
-            bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
-            
-            # Set origin to center for all furniture parts
+            # Create a collection for this furniture
+            furniture_name = f"Furniture_{os.path.basename(filepath).split('.')[0]}"
+            furniture_collection = bpy.data.collections.new(name=furniture_name)
+            context.scene.collection.children.link(furniture_collection)
+
+            # Find the bounding box of all imported objects BEFORE moving them
+            # This preserves their relative positions
+            combined_min = [float('inf')] * 3
+            combined_max = [float('-inf')] * 3
+
             for obj in new_objects:
                 if obj.type == 'MESH':
-                    bpy.ops.object.select_all(action='DESELECT')
-                    obj.select_set(True)
-                    context.view_layer.objects.active = obj
-                    bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
+                    # Get world matrix for this object
+                    world_matrix = obj.matrix_world.copy()
+                    # Get bounding box in world space
+                    for corner in obj.bound_box:
+                        world_co = world_matrix @ Vector(corner)
+                        for i in range(3):
+                            combined_min[i] = min(combined_min[i], world_co[i])
+                            combined_max[i] = max(combined_max[i], world_co[i])
+
+            # Calculate center of the combined bounding box
+            if combined_min[0] != float('inf'):
+                center_x = (combined_min[0] + combined_max[0]) / 2
+                center_y = (combined_min[1] + combined_max[1]) / 2
+                center_z = combined_min[2]  # Use bottom of bounding box
+            else:
+                center_x = center_y = center_z = 0
+
+            # Create furniture parent empty at the center-bottom of all objects
+            bpy.ops.object.empty_add(location=(center_x, center_y, center_z))
+            furniture = context.active_object
+            furniture.name = furniture_name
+            furniture.empty_display_type = 'CUBE'
+            furniture.empty_display_size = 0.5
+
+            # Store original transforms and parent all objects WITHOUT moving them
+            for obj in new_objects:
+                # Store the world matrix before parenting
+                original_matrix = obj.matrix_world.copy()
+
+                # Remove from current collections
+                for coll in list(obj.users_collection):
+                    coll.objects.unlink(obj)
+
+                # Add to furniture collection
+                furniture_collection.objects.link(obj)
+
+                # Parent to the empty while keeping transform
+                obj.parent = furniture
+                # Restore the world transform to maintain position
+                obj.matrix_world = original_matrix
+
+            # Move the parent empty to the collection
+            for coll in list(furniture.users_collection):
+                coll.objects.unlink(furniture)
+            furniture_collection.objects.link(furniture)
             
-            # Find the actual bottom of the furniture model by checking all vertices
+            # Apply scale to the parent (this will scale all children)
+            furniture.scale = (scene.env_furniture_scale,) * 3
+            
+            # Recalculate bounds after scaling to find the actual bottom
             furniture_min_z = float('inf')
-            furniture_max_z = float('-inf')
-            furniture_min_x = float('inf')
-            furniture_max_x = float('-inf')
-            furniture_min_y = float('inf')
-            furniture_max_y = float('-inf')
-            
+
             for obj in new_objects:
                 if obj.type == 'MESH':
                     # Update mesh to ensure correct vertex positions
                     obj.data.update()
                     # Get world coordinates of all vertices
-                    for vert in obj.data.vertices:
-                        world_co = obj.matrix_world @ vert.co
-                        furniture_min_z = min(furniture_min_z, world_co.z)
-                        furniture_max_z = max(furniture_max_z, world_co.z)
-                        furniture_min_x = min(furniture_min_x, world_co.x)
-                        furniture_max_x = max(furniture_max_x, world_co.x)
-                        furniture_min_y = min(furniture_min_y, world_co.y)
-                        furniture_max_y = max(furniture_max_y, world_co.y)
-            
-            # Calculate furniture center
-            furniture_center_x = (furniture_min_x + furniture_max_x) / 2
-            furniture_center_y = (furniture_min_y + furniture_max_y) / 2
-            
-            # Set furniture parent origin to bottom center
-            bpy.ops.object.select_all(action='DESELECT')
-            furniture.select_set(True)
-            context.view_layer.objects.active = furniture
-            
-            # Move origin to the actual bottom center of the furniture
-            cursor_loc = context.scene.cursor.location.copy()
-            context.scene.cursor.location = (furniture_center_x, furniture_center_y, furniture_min_z)
-            bpy.ops.object.origin_set(type='ORIGIN_CURSOR')
-            context.scene.cursor.location = cursor_loc
-            
-            # After changing origin, recalculate the actual bottom position
-            # The furniture's location has changed after setting origin
-            furniture_actual_min_z = float('inf')
-            for obj in new_objects:
-                if obj.type == 'MESH':
-                    obj.data.update()
-                    for vert in obj.data.vertices:
-                        world_co = obj.matrix_world @ vert.co
-                        furniture_actual_min_z = min(furniture_actual_min_z, world_co.z)
+                    bbox = [obj.matrix_world @ Vector(corner) for corner in obj.bound_box]
+                    for corner in bbox:
+                        furniture_min_z = min(furniture_min_z, corner.z)
             
             # Get room bounds to place furniture inside
             room_parent = None
@@ -445,23 +445,15 @@ class ENV_OT_import_furniture(Operator):
                 room_center_y = (room_min_y + room_max_y) / 2
                 
                 # Calculate the offset needed to place furniture on floor
-                # The furniture's actual bottom might be below its origin after the origin change
-                furniture_bottom_offset = furniture_actual_min_z - furniture.location.z
-                
-                # Debug information
-                print(f"Room bounds: Z min={room_min_z:.3f}, Z max={room_max_z:.3f}")
-                print(f"Floor detected at Z={room_floor_z:.3f}")
-                print(f"Furniture actual bottom at Z={furniture_actual_min_z:.3f}")
-                print(f"Furniture origin at Z={furniture.location.z:.3f}")
-                print(f"Bottom offset: {furniture_bottom_offset:.3f}")
-                
+                furniture_bottom_offset = furniture_min_z - furniture.location.z
+
                 # Place furniture so its actual bottom sits on the floor surface
                 furniture.location.x = room_center_x
                 furniture.location.y = room_center_y
-                # Adjust Z position so the actual bottom (not origin) sits on floor
+                # Adjust Z position so the actual bottom sits on floor
                 furniture.location.z = room_floor_z - furniture_bottom_offset
             else:
-                # Fallback if no room found - place at origin
+                # Fallback if no room found - place at origin with slight elevation
                 furniture.location = (0, 0, 0.001)
             
             # Select for easy positioning
@@ -590,6 +582,61 @@ class ENV_OT_recenter_origin(Operator):
         return {'FINISHED'}
 
 
+class ENV_OT_adjust_furniture_scale(Operator):
+    bl_idname = "env.adjust_furniture_scale"
+    bl_label = "Adjust Furniture Scale"
+    bl_description = "Scale selected furniture object"
+    bl_options = {'REGISTER', 'UNDO'}
+    
+    scale_factor: bpy.props.FloatProperty(
+        name="Scale Factor",
+        description="Scale multiplier for selected furniture",
+        default=1.0,
+        min=0.1,
+        max=10.0,
+        step=0.1,
+        precision=2
+    )
+    
+    uniform_scale: bpy.props.BoolProperty(
+        name="Uniform Scale",
+        description="Apply uniform scaling to all axes",
+        default=True
+    )
+    
+    def execute(self, context):
+        selected = context.selected_objects
+        
+        if not selected:
+            self.report({'ERROR'}, "Please select a furniture object")
+            return {'CANCELLED'}
+        
+        for obj in selected:
+            # Skip environment objects, but scale everything else (furniture)
+            if obj.get("is_environment") or obj.name == "Room_Environment":
+                continue
+            
+            # Apply scale to the object
+            if self.uniform_scale:
+                obj.scale *= self.scale_factor
+            else:
+                # Non-uniform scaling could be added here if needed
+                obj.scale *= self.scale_factor
+            
+            # Apply the transformation to make it permanent
+            bpy.ops.object.select_all(action='DESELECT')
+            obj.select_set(True)
+            context.view_layer.objects.active = obj
+            bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+        
+        self.report({'INFO'}, f"Scaled furniture by {self.scale_factor}x")
+        return {'FINISHED'}
+    
+    def invoke(self, context, event):
+        # Show dialog with scale factor input
+        return context.window_manager.invoke_props_dialog(self)
+
+
 class ENV_OT_reset_wall_transparency(Operator):
     bl_idname = "env.reset_wall_transparency"
     bl_label = "Reset Wall Transparency"
@@ -661,15 +708,13 @@ class ENV_OT_reset_wall_transparency(Operator):
         return {'FINISHED'}
 
 
-class ENV_OT_dynamic_transparency(Operator):
-    bl_idname = "env.dynamic_transparency"
-    bl_label = "Enable Dynamic Transparency"
-    bl_description = "Automatically make walls transparent based on viewing angle - preserves textures"
+class ENV_OT_apply_dynamic_transparency(Operator):
+    bl_idname = "env.apply_dynamic_transparency"
+    bl_label = "Make Walls Transparent"
+    bl_description = "Make walls transparent based on camera distance - closer walls become transparent"
     bl_options = {'REGISTER', 'UNDO'}
     
     def execute(self, context):
-        scene = context.scene
-        
         # Find room environment
         room_parent = None
         for obj in bpy.data.objects:
@@ -681,117 +726,706 @@ class ENV_OT_dynamic_transparency(Operator):
             self.report({'ERROR'}, "No room environment found")
             return {'CANCELLED'}
         
-        # Apply dynamic transparency to all room meshes
+        # Process each wall mesh
+        walls_processed = 0
         for child in room_parent.children:
             if child.type == 'MESH':
-                # Ensure object has a material
-                if not child.data.materials:
-                    mat = bpy.data.materials.new(name=f"Dynamic_{child.name}")
-                    child.data.materials.append(mat)
-                else:
-                    mat = child.data.materials[0]
+                # Apply distance-based transparency to each material
+                for mat in child.data.materials:
+                    if mat:
+                        # Enable nodes if not already
+                        if not mat.use_nodes:
+                            mat.use_nodes = True
+                        
+                        nodes = mat.node_tree.nodes
+                        links = mat.node_tree.links
+                        
+                        # Skip if already has transparency
+                        if any('Trans_' in node.name for node in nodes):
+                            continue
+                        
+                        # Find existing principled BSDF and output
+                        principled = None
+                        output = None
+                        for node in nodes:
+                            if node.type == 'BSDF_PRINCIPLED':
+                                principled = node
+                            elif node.type == 'OUTPUT_MATERIAL':
+                                output = node
+                        
+                        if not principled or not output:
+                            continue
+                        
+                        # Create distance-based transparency using Alpha channel
+                        # 1. Camera Data for distance
+                        camera_data = nodes.new('ShaderNodeCameraData')
+                        camera_data.location = (-600, -200)
+                        camera_data.name = "Trans_CameraData"
+                        
+                        # 2. Map Range to control distance (0-3 units mapped to 0-1)
+                        map_range = nodes.new('ShaderNodeMapRange')
+                        map_range.location = (-400, -200)
+                        map_range.name = "Trans_MapRange"
+                        map_range.inputs['From Min'].default_value = 0.0
+                        map_range.inputs['From Max'].default_value = 2.0  # Walls within 2 units become transparent
+                        map_range.inputs['To Min'].default_value = 0.0
+                        map_range.inputs['To Max'].default_value = 1.0
+                        map_range.clamp = True
+                        
+                        # 3. Invert (closer = less alpha = more transparent)
+                        invert = nodes.new('ShaderNodeMath')
+                        invert.operation = 'SUBTRACT'
+                        invert.location = (-200, -200)
+                        invert.name = "Trans_Invert"
+                        invert.inputs[0].default_value = 1.0
+                        
+                        # 4. Multiply to control transparency range
+                        multiply = nodes.new('ShaderNodeMath')
+                        multiply.operation = 'MULTIPLY'
+                        multiply.location = (0, -200)
+                        multiply.name = "Trans_Multiply"
+                        multiply.inputs[1].default_value = 0.5  # Range of transparency change
+                        
+                        # 5. Add to ensure minimum opacity
+                        add = nodes.new('ShaderNodeMath')
+                        add.operation = 'ADD'
+                        add.location = (200, -200)
+                        add.name = "Trans_Add"
+                        add.inputs[1].default_value = 0.5  # Minimum 50% opacity (never too transparent)
+                        
+                        # Connect the distance-based alpha
+                        links.new(camera_data.outputs['View Z Depth'], map_range.inputs['Value'])
+                        links.new(map_range.outputs['Result'], invert.inputs[1])
+                        links.new(invert.outputs['Value'], multiply.inputs[0])
+                        links.new(multiply.outputs['Value'], add.inputs[0])
+                        links.new(add.outputs['Value'], principled.inputs['Alpha'])
+                        
+                        # Configure material for transparency
+                        mat.blend_method = 'BLEND'
+                        mat.use_backface_culling = False
+                        mat.show_transparent_back = True
+                        
+                        # For Eevee
+                        if hasattr(mat, 'use_transparency_overlap'):
+                            mat.use_transparency_overlap = True
+                        
+                        walls_processed += 1
                 
-                # Setup dynamic transparency with shader nodes
-                mat.use_nodes = True
-                nodes = mat.node_tree.nodes
-                links = mat.node_tree.links
-                
-                # Store original shader setup if exists
-                original_bsdf = None
-                original_output = None
-                original_links = []
-                
-                # Find existing Principled BSDF and preserve it
-                for node in nodes:
-                    if node.type == 'BSDF_PRINCIPLED':
-                        original_bsdf = node
-                    elif node.type == 'OUTPUT_MATERIAL':
-                        original_output = node
-                
-                # If we have existing material setup, preserve it
-                if original_bsdf:
-                    # Store all links to the BSDF
-                    for link in links:
-                        if link.to_node == original_bsdf:
-                            original_links.append({
-                                'from_socket': link.from_socket,
-                                'to_socket': link.to_socket
-                            })
-                else:
-                    # Create new Principled BSDF
-                    original_bsdf = nodes.new('ShaderNodeBsdfPrincipled')
-                    original_bsdf.location = (0, 0)
-                
-                # Create or get output node
-                if not original_output:
-                    original_output = nodes.new('ShaderNodeOutputMaterial')
-                    original_output.location = (500, 0)
-                
-                # Add transparency nodes without clearing existing ones
-                
-                # Check if dynamic transparency already exists
-                if "Dynamic_Mix" in nodes:
-                    # Already has dynamic setup, skip
-                    continue
-                
-                # Geometry node - provides backfacing info
-                geometry = nodes.new('ShaderNodeNewGeometry')
-                geometry.location = (-600, -400)
-                geometry.name = "Dynamic_Geometry"
-                
-                # Color Ramp to control transparency gradient
-                ramp = nodes.new('ShaderNodeValToRGB')
-                ramp.name = "Transparency_Ramp"
-                ramp.location = (-400, -400)
-                # Adjust ramp for smooth transition
-                ramp.color_ramp.elements[0].position = 0.3  # Start fading
-                ramp.color_ramp.elements[1].position = 0.7  # Fully transparent
-                ramp.color_ramp.elements[0].color = (1, 1, 1, 1)  # White = opaque
-                ramp.color_ramp.elements[1].color = (0, 0, 0, 1)  # Black = transparent
-                
-                # Math node to invert backfacing (1 - backfacing)
-                invert = nodes.new('ShaderNodeMath')
-                invert.operation = 'SUBTRACT'
-                invert.location = (-200, -400)
-                invert.inputs[0].default_value = 1.0
-                invert.name = "Dynamic_Invert"
-                
-                # Transparent shader
-                transparent = nodes.new('ShaderNodeBsdfTransparent')
-                transparent.location = (0, -200)
-                transparent.name = "Dynamic_Transparent"
-                
-                # Mix shader controlled by facing ratio
-                mix = nodes.new('ShaderNodeMixShader')
-                mix.name = "Dynamic_Mix"
-                mix.location = (300, 0)
-                
-                # Disconnect existing connection to output
-                for link in list(links):
-                    if link.to_node == original_output and link.to_socket.name == 'Surface':
-                        links.remove(link)
-                
-                # Connect nodes for dynamic transparency
-                # Backfacing output gives 1 for faces pointing away from camera
-                links.new(geometry.outputs['Backfacing'], ramp.inputs['Fac'])
-                links.new(ramp.outputs['Color'], invert.inputs[1])
-                links.new(invert.outputs['Value'], mix.inputs['Fac'])
-                
-                # Connect original material to mix
-                links.new(original_bsdf.outputs['BSDF'], mix.inputs[1])
-                links.new(transparent.outputs['BSDF'], mix.inputs[2])
-                links.new(mix.outputs['Shader'], original_output.inputs['Surface'])
-                
-                # Set material properties
-                mat.blend_method = 'BLEND'
-                mat.show_transparent_back = False
-                mat.use_backface_culling = False  # Show both sides
-                
-                # Mark as having dynamic transparency
+                # Mark as having transparency
                 child["has_dynamic_transparency"] = True
         
-        self.report({'INFO'}, "Dynamic view-based transparency enabled")
+        # Use Eevee for faster viewport preview
+        context.scene.render.engine = 'BLENDER_EEVEE_NEXT' if bpy.app.version >= (4, 2, 0) else 'BLENDER_EEVEE'
+        
+        # Configure Eevee for transparency and fix shadow buffer issues
+        eevee = context.scene.eevee
+        
+        # Optimize shadow settings to prevent buffer overflow
+        if hasattr(eevee, 'shadow_cube_size'):
+            eevee.shadow_cube_size = '1024'  # Reduce from default to prevent overflow
+        if hasattr(eevee, 'shadow_cascade_size'):
+            eevee.shadow_cascade_size = '1024'  # Reduce cascade shadows
+        if hasattr(eevee, 'use_soft_shadows'):
+            eevee.use_soft_shadows = False  # Disable soft shadows to save memory
+        
+        # Limit light shadows to prevent buffer issues
+        for obj in context.scene.objects:
+            if obj.type == 'LIGHT':
+                # Disable shadows for less important lights
+                if 'Fill' in obj.name or 'Lamp' in obj.name:
+                    obj.data.use_shadow = False
+                # Reduce shadow resolution for remaining lights
+                elif hasattr(obj.data, 'shadow_buffer_size'):
+                    obj.data.shadow_buffer_size = 1024
+        
+        if hasattr(eevee, 'use_ssr'):
+            eevee.use_ssr = False  # Disable SSR to save performance with transparency
+        
+        # DO NOT modify world colors - only ensure basic lighting exists
+        # The grey/sandy look comes from changing world colors, so we avoid that
+        
+        # Set viewport shading to Material Preview to see transparency
+        for area in context.screen.areas:
+            if area.type == 'VIEW_3D':
+                space = area.spaces[0]
+                space.shading.type = 'MATERIAL'  # Material preview for transparency
+                space.shading.use_scene_lights = True  # Use existing lights
+                space.shading.use_scene_world = True  # Use existing world
+        
+        self.report({'INFO'}, f"Applied distance-based transparency to {walls_processed} wall materials")
+        self.report({'INFO'}, "Walls become transparent as camera gets closer")
         return {'FINISHED'}
+
+
+class ENV_OT_prepare_for_spline(Operator):
+    bl_idname = "env.prepare_for_spline"
+    bl_label = "Prepare for Spline Export"
+    bl_description = "Optimize scene for best quality when importing to Spline"
+    bl_options = {'REGISTER', 'UNDO'}
+    
+    def execute(self, context):
+        scene = context.scene
+        
+        # 1. Ensure all materials have proper PBR setup for Spline
+        for obj in bpy.data.objects:
+            if obj.type == 'MESH':
+                for mat_slot in obj.material_slots:
+                    if mat_slot.material:
+                        mat = mat_slot.material
+                        if mat.use_nodes:
+                            nodes = mat.node_tree.nodes
+                            
+                            # Find Principled BSDF
+                            principled = None
+                            for node in nodes:
+                                if node.type == 'BSDF_PRINCIPLED':
+                                    principled = node
+                                    break
+                            
+                            if principled:
+                                # Optimize for Spline's PBR pipeline
+                                # Ensure metallic/roughness are set properly
+                                if 'Metallic' in principled.inputs:
+                                    # Keep metallic values for proper material response
+                                    pass
+                                
+                                if 'Roughness' in principled.inputs:
+                                    # Ensure roughness for realistic lighting
+                                    if principled.inputs['Roughness'].default_value == 0:
+                                        principled.inputs['Roughness'].default_value = 0.5
+                                
+                                # Set IOR for better reflections
+                                if 'IOR' in principled.inputs:
+                                    principled.inputs['IOR'].default_value = 1.45
+        
+        # 2. Add emission to light sources for Spline
+        light_objects = []
+        for obj in bpy.data.objects:
+            if obj.type == 'LIGHT':
+                # Create emissive mesh to represent light in Spline
+                if obj.data.type == 'POINT':
+                    bpy.ops.mesh.primitive_ico_sphere_add(location=obj.location, subdivisions=2)
+                elif obj.data.type == 'AREA':
+                    bpy.ops.mesh.primitive_plane_add(location=obj.location)
+                else:
+                    continue
+                
+                light_mesh = context.active_object
+                light_mesh.name = f"EmissiveLight_{obj.name}"
+                light_mesh.scale = (0.2, 0.2, 0.2)
+                
+                # Create emissive material
+                mat = bpy.data.materials.new(name=f"Emissive_{obj.name}")
+                mat.use_nodes = True
+                nodes = mat.node_tree.nodes
+                nodes.clear()
+                
+                # Add emission shader
+                emission = nodes.new('ShaderNodeEmission')
+                emission.inputs['Color'].default_value = (*obj.data.color, 1.0)
+                emission.inputs['Strength'].default_value = obj.data.energy
+                
+                output = nodes.new('ShaderNodeOutputMaterial')
+                mat.node_tree.links.new(emission.outputs['Emission'], output.inputs['Surface'])
+                
+                light_mesh.data.materials.append(mat)
+                light_objects.append(light_mesh)
+        
+        # 3. Bake ambient occlusion for better depth in Spline
+        self.report({'INFO'}, f"Prepared scene for Spline export - Added {len(light_objects)} emissive lights")
+        self.report({'INFO'}, "Recommendations for Spline:")
+        self.report({'INFO'}, "1. Use 'Realistic' or 'Studio' environment in Spline")
+        self.report({'INFO'}, "2. Enable 'Global Illumination' in Spline")
+        self.report({'INFO'}, "3. Add HDRI: Spline > Environment > HDRI > Choose preset")
+        self.report({'INFO'}, "4. Adjust Exposure: Environment > Exposure (try 1.2-1.5)")
+        
+        return {'FINISHED'}
+
+
+class ENV_OT_before_after_snapshot(Operator):
+    bl_idname = "env.before_after_snapshot"
+    bl_label = "Before/After Snapshots"
+    bl_description = "Render room with and without furniture"
+    bl_options = {'REGISTER', 'UNDO'}
+    
+    output_path: bpy.props.StringProperty(
+        name="Output Path",
+        description="Where to save the snapshots",
+        default="//snapshots/",
+        subtype='DIR_PATH'
+    )
+    
+    def execute(self, context):
+        import os
+        from datetime import datetime
+        
+        if not context.scene.camera:
+            self.report({'ERROR'}, "Please setup camera first")
+            return {'CANCELLED'}
+        
+        # Create output directory
+        output_dir = bpy.path.abspath(self.output_path)
+        os.makedirs(output_dir, exist_ok=True)
+        
+        # Setup render settings
+        scene = context.scene
+        scene.render.resolution_x = 1920
+        scene.render.resolution_y = 1080
+        
+        # Generate timestamp for unique filenames
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        
+        # Store furniture visibility states
+        furniture_objects = []
+        for obj in bpy.data.objects:
+            if obj.type == 'MESH' and not obj.get("is_environment"):
+                # Assume non-environment meshes are furniture
+                if not obj.name.startswith("Room_") and obj.parent != bpy.data.objects.get("Room_Environment"):
+                    furniture_objects.append((obj, obj.hide_viewport, obj.hide_render))
+        
+        # Render WITH furniture (current state)
+        with_furniture_path = os.path.join(output_dir, f"with_furniture_{timestamp}.png")
+        scene.render.filepath = with_furniture_path
+        bpy.ops.render.render(write_still=True)
+        self.report({'INFO'}, f"Saved: {with_furniture_path}")
+        
+        # Hide all furniture
+        for obj, _, _ in furniture_objects:
+            obj.hide_viewport = True
+            obj.hide_render = True
+        
+        # Render WITHOUT furniture
+        without_furniture_path = os.path.join(output_dir, f"without_furniture_{timestamp}.png")
+        scene.render.filepath = without_furniture_path
+        bpy.ops.render.render(write_still=True)
+        self.report({'INFO'}, f"Saved: {without_furniture_path}")
+        
+        # Restore furniture visibility
+        for obj, original_viewport, original_render in furniture_objects:
+            obj.hide_viewport = original_viewport
+            obj.hide_render = original_render
+        
+        # Create comparison HTML file
+        html_path = os.path.join(output_dir, f"comparison_{timestamp}.html")
+        with open(html_path, 'w') as f:
+            f.write(f'''<!DOCTYPE html>
+<html>
+<head>
+    <title>Room Comparison - {timestamp}</title>
+    <style>
+        body {{ font-family: Arial; margin: 20px; background: #f0f0f0; }}
+        .container {{ max-width: 1920px; margin: 0 auto; }}
+        .slider-container {{ position: relative; overflow: hidden; background: white; }}
+        .slider-container img {{ width: 100%; display: block; }}
+        .after-image {{ position: absolute; top: 0; left: 0; width: 50%; overflow: hidden; }}
+        .after-image img {{ width: 200%; max-width: 200%; }}
+        .slider {{ position: absolute; top: 0; bottom: 0; left: 50%; width: 4px; background: white;
+                  box-shadow: 0 0 4px rgba(0,0,0,0.5); cursor: ew-resize; }}
+        .label {{ position: absolute; top: 20px; background: rgba(0,0,0,0.7); color: white; 
+                  padding: 5px 10px; font-size: 14px; }}
+        .before-label {{ left: 20px; }}
+        .after-label {{ right: 20px; }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Room Comparison - {timestamp}</h1>
+        <div class="slider-container" id="comparison">
+            <img src="without_furniture_{timestamp}.png" alt="Before">
+            <div class="after-image" id="afterImage">
+                <img src="with_furniture_{timestamp}.png" alt="After">
+            </div>
+            <div class="slider" id="slider"></div>
+            <div class="label before-label">Empty Room</div>
+            <div class="label after-label">With Furniture</div>
+        </div>
+    </div>
+    <script>
+        const slider = document.getElementById('slider');
+        const afterImage = document.getElementById('afterImage');
+        const comparison = document.getElementById('comparison');
+        let isDown = false;
+        
+        slider.addEventListener('mousedown', () => isDown = true);
+        document.addEventListener('mouseup', () => isDown = false);
+        document.addEventListener('mousemove', (e) => {{
+            if (!isDown) return;
+            const rect = comparison.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const percent = (x / rect.width) * 100;
+            if (percent >= 0 && percent <= 100) {{
+                slider.style.left = percent + '%';
+                afterImage.style.width = percent + '%';
+            }}
+        }});
+    </script>
+</body>
+</html>''')
+        
+        self.report({'INFO'}, f"Comparison viewer saved: {html_path}")
+        return {'FINISHED'}
+
+
+class ENV_OT_save_template(Operator):
+    bl_idname = "env.save_template"
+    bl_label = "Save Room Template"
+    bl_description = "Save current room setup as a reusable template"
+    bl_options = {'REGISTER', 'UNDO'}
+    
+    template_name: bpy.props.StringProperty(
+        name="Template Name",
+        description="Name for this template",
+        default="Room_Template"
+    )
+    
+    filepath: bpy.props.StringProperty(
+        name="File Path",
+        description="Path to save template",
+        default="//templates/",
+        subtype='FILE_PATH'
+    )
+    
+    def execute(self, context):
+        import json
+        import os
+        
+        # Create templates directory
+        template_dir = bpy.path.abspath(self.filepath)
+        if not template_dir.endswith('/'):
+            template_dir = os.path.dirname(template_dir) + '/'
+        os.makedirs(template_dir, exist_ok=True)
+        
+        # Collect room data
+        template_data = {
+            'name': self.template_name,
+            'room': {},
+            'furniture': [],
+            'lights': [],
+            'camera': {},
+            'settings': {}
+        }
+        
+        # Save room environment data
+        room_env = bpy.data.objects.get("Room_Environment")
+        if room_env:
+            template_data['room'] = {
+                'location': list(room_env.location),
+                'rotation': list(room_env.rotation_euler),
+                'scale': list(room_env.scale)
+            }
+        
+        # Save furniture data
+        for obj in bpy.data.objects:
+            if obj.type == 'MESH' and not obj.get("is_environment"):
+                if obj.name.startswith("Furniture_") or (not obj.name.startswith("Room_") and obj.parent != room_env):
+                    furniture_data = {
+                        'name': obj.name,
+                        'location': list(obj.location),
+                        'rotation': list(obj.rotation_euler),
+                        'scale': list(obj.scale),
+                        'source_file': obj.get('source_file', ''),  # Store original file path if available
+                        'materials': []
+                    }
+                    
+                    # Store material properties
+                    for mat_slot in obj.material_slots:
+                        if mat_slot.material:
+                            mat = mat_slot.material
+                            mat_data = {
+                                'name': mat.name,
+                                'base_color': list(mat.diffuse_color) if mat else [1, 1, 1, 1]
+                            }
+                            
+                            # Store principled BSDF settings if available
+                            if mat.use_nodes:
+                                for node in mat.node_tree.nodes:
+                                    if node.type == 'BSDF_PRINCIPLED':
+                                        mat_data['metallic'] = node.inputs['Metallic'].default_value
+                                        mat_data['roughness'] = node.inputs['Roughness'].default_value
+                                        if 'Base Color' in node.inputs:
+                                            col = node.inputs['Base Color'].default_value
+                                            mat_data['base_color'] = [col[0], col[1], col[2], col[3]]
+                                        break
+                            
+                            furniture_data['materials'].append(mat_data)
+                    
+                    template_data['furniture'].append(furniture_data)
+        
+        # Save light data
+        for obj in bpy.data.objects:
+            if obj.type == 'LIGHT':
+                light_data = {
+                    'name': obj.name,
+                    'type': obj.data.type,
+                    'location': list(obj.location),
+                    'rotation': list(obj.rotation_euler),
+                    'energy': obj.data.energy,
+                    'color': list(obj.data.color)
+                }
+                template_data['lights'].append(light_data)
+        
+        # Save camera data
+        if context.scene.camera:
+            cam = context.scene.camera
+            template_data['camera'] = {
+                'location': list(cam.location),
+                'rotation': list(cam.rotation_euler),
+                'lens': cam.data.lens if cam.data else 50
+            }
+        
+        # Save scene settings
+        template_data['settings'] = {
+            'room_scale': context.scene.env_room_scale if hasattr(context.scene, 'env_room_scale') else 1.0,
+            'furniture_scale': context.scene.env_furniture_scale if hasattr(context.scene, 'env_furniture_scale') else 1.0
+        }
+        
+        # Save to JSON file
+        template_file = os.path.join(template_dir, f"{self.template_name}.json")
+        with open(template_file, 'w') as f:
+            json.dump(template_data, f, indent=2)
+        
+        self.report({'INFO'}, f"Template saved: {template_file}")
+        return {'FINISHED'}
+    
+    def invoke(self, context, event):
+        return context.window_manager.invoke_props_dialog(self)
+
+
+class ENV_OT_load_template(Operator):
+    bl_idname = "env.load_template"
+    bl_label = "Load Room Template"
+    bl_description = "Load a saved room template"
+    bl_options = {'REGISTER', 'UNDO'}
+    
+    filepath: bpy.props.StringProperty(
+        name="Template File",
+        description="Select template to load",
+        default="",
+        subtype='FILE_PATH'
+    )
+    
+    clear_scene: bpy.props.BoolProperty(
+        name="Clear Scene",
+        description="Clear existing objects before loading template",
+        default=True
+    )
+    
+    def execute(self, context):
+        import json
+        import os
+        
+        if not os.path.exists(self.filepath):
+            self.report({'ERROR'}, "Template file not found")
+            return {'CANCELLED'}
+        
+        # Load template data
+        with open(self.filepath, 'r') as f:
+            template_data = json.load(f)
+        
+        # Clear scene if requested
+        if self.clear_scene:
+            bpy.ops.object.select_all(action='SELECT')
+            bpy.ops.object.delete(use_global=False)
+        
+        # Recreate room environment
+        if template_data.get('room'):
+            # Create empty for room parent
+            bpy.ops.object.empty_add(location=(0, 0, 0))
+            room_parent = context.active_object
+            room_parent.name = "Room_Environment"
+            room_parent["is_environment"] = True
+            
+            room = template_data['room']
+            room_parent.location = room['location']
+            room_parent.rotation_euler = room['rotation']
+            room_parent.scale = room['scale']
+        
+        # Recreate furniture
+        # Note: This is a simplified version - in real use, you'd need the actual GLB files
+        for furniture in template_data.get('furniture', []):
+            # Create placeholder cube for furniture
+            bpy.ops.mesh.primitive_cube_add()
+            obj = context.active_object
+            obj.name = furniture['name']
+            obj.location = furniture['location']
+            obj.rotation_euler = furniture['rotation']
+            obj.scale = furniture['scale']
+            
+            # Apply materials if available
+            for mat_data in furniture.get('materials', []):
+                mat = bpy.data.materials.new(name=mat_data['name'])
+                mat.use_nodes = True
+                
+                # Setup principled BSDF
+                nodes = mat.node_tree.nodes
+                principled = nodes.get("Principled BSDF")
+                if principled:
+                    if 'base_color' in mat_data:
+                        principled.inputs['Base Color'].default_value = mat_data['base_color']
+                    if 'metallic' in mat_data:
+                        principled.inputs['Metallic'].default_value = mat_data['metallic']
+                    if 'roughness' in mat_data:
+                        principled.inputs['Roughness'].default_value = mat_data['roughness']
+                
+                obj.data.materials.append(mat)
+            
+            self.report({'WARNING'}, f"Created placeholder for {furniture['name']} - Original model file needed for full restoration")
+        
+        # Recreate lights
+        for light_data in template_data.get('lights', []):
+            bpy.ops.object.light_add(
+                type=light_data['type'],
+                location=light_data['location']
+            )
+            light = context.active_object
+            light.name = light_data['name']
+            light.rotation_euler = light_data['rotation']
+            light.data.energy = light_data['energy']
+            light.data.color = light_data['color']
+        
+        # Recreate camera
+        if template_data.get('camera'):
+            cam_data = template_data['camera']
+            bpy.ops.object.camera_add(location=cam_data['location'])
+            camera = context.active_object
+            camera.rotation_euler = cam_data['rotation']
+            camera.data.lens = cam_data.get('lens', 50)
+            context.scene.camera = camera
+        
+        # Apply settings
+        if template_data.get('settings'):
+            settings = template_data['settings']
+            if hasattr(context.scene, 'env_room_scale'):
+                context.scene.env_room_scale = settings.get('room_scale', 1.0)
+            if hasattr(context.scene, 'env_furniture_scale'):
+                context.scene.env_furniture_scale = settings.get('furniture_scale', 1.0)
+        
+        self.report({'INFO'}, f"Template loaded: {template_data['name']}")
+        return {'FINISHED'}
+    
+    def invoke(self, context, event):
+        context.window_manager.fileselect_add(self)
+        return {'RUNNING_MODAL'}
+
+
+class ENV_OT_export_baked_glb(Operator):
+    bl_idname = "env.export_baked_glb"
+    bl_label = "Export Baked GLB"
+    bl_description = "Export room as GLB with lighting baked in"
+    bl_options = {'REGISTER', 'UNDO'}
+    
+    filepath: bpy.props.StringProperty(
+        name="File Path",
+        default="//room_export.glb",
+        subtype='FILE_PATH'
+    )
+    
+    bake_lighting: bpy.props.BoolProperty(
+        name="Bake Lighting",
+        default=True,
+        description="Bake lighting into textures"
+    )
+    
+    texture_size: bpy.props.IntProperty(
+        name="Texture Size",
+        default=2048,
+        min=512,
+        max=4096,
+        description="Size of baked textures"
+    )
+    
+    def execute(self, context):
+        import os
+        
+        # Store original selection
+        original_selection = context.selected_objects.copy()
+        original_active = context.view_layer.objects.active
+        
+        # Select all mesh objects
+        bpy.ops.object.select_all(action='DESELECT')
+        for obj in context.scene.objects:
+            if obj.type == 'MESH':
+                obj.select_set(True)
+        
+        if self.bake_lighting:
+            # Create bake material for each object
+            for obj in context.selected_objects:
+                if obj.type != 'MESH':
+                    continue
+                    
+                # Make active
+                context.view_layer.objects.active = obj
+                
+                # Ensure UV map exists
+                if not obj.data.uv_layers:
+                    bpy.ops.mesh.uv_texture_add()
+                
+                # Create new material for baking
+                mat_name = f"{obj.name}_baked"
+                mat = bpy.data.materials.new(name=mat_name)
+                mat.use_nodes = True
+                nodes = mat.node_tree.nodes
+                
+                # Clear default nodes
+                nodes.clear()
+                
+                # Add nodes
+                bsdf = nodes.new('ShaderNodeBsdfPrincipled')
+                output = nodes.new('ShaderNodeOutputMaterial')
+                tex_node = nodes.new('ShaderNodeTexImage')
+                
+                # Create texture
+                tex_name = f"{obj.name}_baked_texture"
+                tex = bpy.data.images.new(
+                    tex_name, 
+                    self.texture_size, 
+                    self.texture_size
+                )
+                tex_node.image = tex
+                
+                # Connect nodes
+                mat.node_tree.links.new(tex_node.outputs['Color'], bsdf.inputs['Base Color'])
+                mat.node_tree.links.new(bsdf.outputs['BSDF'], output.inputs['Surface'])
+                
+                # Assign material
+                obj.data.materials.clear()
+                obj.data.materials.append(mat)
+                
+                # Select texture node for baking
+                nodes.active = tex_node
+                
+                # Bake
+                context.scene.render.engine = 'CYCLES'
+                context.scene.cycles.bake_type = 'COMBINED'
+                bpy.ops.object.bake(type='COMBINED')
+        
+        # Export GLB
+        filepath = bpy.path.abspath(self.filepath)
+        
+        bpy.ops.export_scene.gltf(
+            filepath=filepath,
+            use_selection=True,
+            export_format='GLB',
+            export_texcoords=True,
+            export_normals=True,
+            export_materials='EXPORT',
+            export_attributes=True,
+            export_draco_mesh_compression_enable=False,
+            export_apply=True
+        )
+        
+        # Restore selection
+        bpy.ops.object.select_all(action='DESELECT')
+        for obj in original_selection:
+            obj.select_set(True)
+        context.view_layer.objects.active = original_active
+        
+        self.report({'INFO'}, f"Exported to {filepath}")
+        return {'FINISHED'}
+    
+    def invoke(self, context, event):
+        context.window_manager.fileselect_add(self)
+        return {'RUNNING_MODAL'}
 
 
 class ENV_OT_render_snapshot(Operator):
@@ -814,20 +1448,33 @@ class ENV_OT_render_snapshot(Operator):
         
         return {'FINISHED'}
 
+
 def register():
     bpy.utils.register_class(ENV_OT_load_environment)
     bpy.utils.register_class(ENV_OT_apply_lighting)
     bpy.utils.register_class(ENV_OT_import_furniture)
     bpy.utils.register_class(ENV_OT_setup_camera)
     bpy.utils.register_class(ENV_OT_recenter_origin)
-    bpy.utils.register_class(ENV_OT_dynamic_transparency)
+    bpy.utils.register_class(ENV_OT_adjust_furniture_scale)
     bpy.utils.register_class(ENV_OT_reset_wall_transparency)
+    bpy.utils.register_class(ENV_OT_apply_dynamic_transparency)
+    bpy.utils.register_class(ENV_OT_prepare_for_spline)
+    bpy.utils.register_class(ENV_OT_export_baked_glb)
+    bpy.utils.register_class(ENV_OT_before_after_snapshot)
+    bpy.utils.register_class(ENV_OT_save_template)
+    bpy.utils.register_class(ENV_OT_load_template)
     bpy.utils.register_class(ENV_OT_render_snapshot)
 
 def unregister():
     bpy.utils.unregister_class(ENV_OT_render_snapshot)
+    bpy.utils.unregister_class(ENV_OT_load_template)
+    bpy.utils.unregister_class(ENV_OT_save_template)
+    bpy.utils.unregister_class(ENV_OT_before_after_snapshot)
+    bpy.utils.unregister_class(ENV_OT_export_baked_glb)
+    bpy.utils.unregister_class(ENV_OT_prepare_for_spline)
+    bpy.utils.unregister_class(ENV_OT_apply_dynamic_transparency)
     bpy.utils.unregister_class(ENV_OT_reset_wall_transparency)
-    bpy.utils.unregister_class(ENV_OT_dynamic_transparency)
+    bpy.utils.unregister_class(ENV_OT_adjust_furniture_scale)
     bpy.utils.unregister_class(ENV_OT_recenter_origin)
     bpy.utils.unregister_class(ENV_OT_setup_camera)
     bpy.utils.unregister_class(ENV_OT_import_furniture)
