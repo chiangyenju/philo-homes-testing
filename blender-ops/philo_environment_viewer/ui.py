@@ -27,8 +27,8 @@ class ENV_PT_main(Panel):
         
         # Step 2: Lighting
         box = layout.box()
-        box.label(text="2. Lighting", icon='LIGHT')
-        box.operator("env.apply_lighting", text="Apply Interior Lighting", icon='LIGHT')
+        box.label(text="2. Interior Lighting", icon='LIGHT')
+        box.operator("env.apply_lighting", text="Apply Magazine Lighting", icon='LIGHT_SUN')
         
         layout.separator()
         
@@ -38,7 +38,13 @@ class ENV_PT_main(Panel):
         box.prop(scene, "env_furniture_path", text="")
         box.prop(scene, "env_furniture_scale")
         box.operator("env.import_furniture", text="Import Furniture", icon='IMPORT')
-        box.operator("env.recenter_origin", text="Center Origin", icon='PIVOT_MEDIAN')
+        
+        box.separator()
+        box.label(text="Adjust Selected:", icon='MODIFIER')
+        row = box.row(align=True)
+        row.operator("env.adjust_furniture_scale", text="Scale", icon='FULLSCREEN_ENTER')
+        row.operator("env.recenter_origin", text="Center Origin", icon='PIVOT_MEDIAN')
+        
         box.label(text="Tip: Use G to move, R to rotate", icon='INFO')
         
         layout.separator()
@@ -47,18 +53,28 @@ class ENV_PT_main(Panel):
         box = layout.box()
         box.label(text="4. Camera & Render", icon='CAMERA_DATA')
         row = box.row(align=True)
-        row.operator("env.setup_camera", text="Add Camera", icon='CAMERA_DATA')
+        row.operator("env.setup_camera", text="Setup Camera", icon='CAMERA_DATA')
         row.operator("env.render_snapshot", text="Render", icon='RENDER_STILL')
         
         box.separator()
-        box.label(text="Dynamic Transparency:", icon='SHADING_RENDERED')
-        
+        box.label(text="Transparency:", icon='SHADING_RENDERED')
         row = box.row(align=True)
-        row.operator("env.dynamic_transparency", text="Enable", icon='HIDE_OFF')
-        row.operator("env.reset_wall_transparency", text="Disable", icon='HIDE_ON')
+        row.operator("env.apply_dynamic_transparency", text="Make Walls Transparent", icon='MOD_OPACITY')
+        row.operator("env.reset_wall_transparency", text="Reset", icon='RECOVER_LAST')
         
-        box.label(text="Auto-updates with view angle", icon='INFO')
-        box.label(text="Numpad 0: Camera view", icon='INFO')
+        box.separator()
+        box.label(text="Comparison:", icon='IMAGE_DATA')
+        box.operator("env.before_after_snapshot", text="Before/After Snapshots", icon='RENDER_ANIMATION')
+        
+        layout.separator()
+        
+        # Step 5: Templates
+        box = layout.box()
+        box.label(text="5. Room Templates", icon='FILE_FOLDER')
+        row = box.row(align=True)
+        row.operator("env.save_template", text="Save Template", icon='FILE_TICK')
+        row.operator("env.load_template", text="Load Template", icon='FILE_FOLDER')
+        box.label(text="Save/load complete room setups", icon='INFO')
 
 def register():
     bpy.utils.register_class(ENV_PT_main)
