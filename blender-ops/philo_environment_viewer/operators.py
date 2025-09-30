@@ -91,378 +91,467 @@ class ENV_OT_load_environment(Operator):
 class ENV_OT_apply_lighting(Operator):
     bl_idname = "env.apply_lighting"
     bl_label = "Apply Lighting"
-    bl_description = "Setup interior lighting"
+    bl_description = "Setup realistic interior lighting"
     bl_options = {'REGISTER', 'UNDO'}
-    
+
     def execute(self, context):
         scene = context.scene
-        
-        # Setup Cycles with realistic settings
+
+        # Use Cycles for best quality lighting
         scene.render.engine = 'CYCLES'
-        scene.cycles.device = 'GPU'
-        scene.cycles.samples = 512
+        scene.cycles.samples = 128
         scene.cycles.use_denoising = True
-        scene.cycles.caustics_reflective = True
-        scene.cycles.caustics_refractive = True
-        scene.cycles.max_bounces = 12
-        
-        # Remove old lights
+        scene.cycles.use_adaptive_sampling = True
+        scene.cycles.adaptive_threshold = 0.01
+
+        # Enable light bounces for realistic indirect lighting
+        scene.cycles.max_bounces = 8
+        scene.cycles.diffuse_bounces = 4
+        scene.cycles.glossy_bounces = 4
+        scene.cycles.transmission_bounces = 8
+        scene.cycles.volume_bounces = 0
+        scene.cycles.transparent_max_bounces = 8
+
+        # Remove all existing lights
         for obj in bpy.data.objects:
             if obj.type == 'LIGHT':
                 bpy.data.objects.remove(obj)
-        
-        # Find room bounds to place lights inside
+
+        # Find room bounds to position lights properly
         room_parent = None
         for obj in bpy.data.objects:
             if obj.name == "Room_Environment":
                 room_parent = obj
                 break
-        
+
+        # Calculate room center and size
+        room_center = Vector((0, 0, 2))  # Default
+        room_size = Vector((5, 5, 3))    # Default
+
         if room_parent:
-            # Calculate room interior bounds
             room_min = Vector((float('inf'),) * 3)
             room_max = Vector((float('-inf'),) * 3)
-            
+
             for child in room_parent.children:
                 if child.type == 'MESH':
                     for vert in child.data.vertices:
                         world_co = child.matrix_world @ vert.co
                         room_min = Vector((min(room_min[i], world_co[i]) for i in range(3)))
                         room_max = Vector((max(room_max[i], world_co[i]) for i in range(3)))
-            
+
             room_center = (room_min + room_max) / 2
             room_size = room_max - room_min
-            
-            # Calculate safe interior positions (20% margin from walls)
-            margin = 0.2
-            safe_x_min = room_min.x + room_size.x * margin
-            safe_x_max = room_max.x - room_size.x * margin
-            safe_y_min = room_min.y + room_size.y * margin
-            safe_y_max = room_max.y - room_size.y * margin
-            safe_z_max = room_max.z - room_size.z * 0.1  # 10% from ceiling
-            
-            # Key light - warm sunlight from window
-            key_pos = Vector((
-                safe_x_min + room_size.x * 0.3,  # 30% from left wall
-                safe_y_min + room_size.y * 0.2,  # 20% from front wall
-                safe_z_max - 0.5  # Very close to ceiling
-            ))
-            bpy.ops.object.light_add(type='AREA', location=key_pos)
-            key = context.active_object
-            key.name = "Key_Light"
-            key.data.energy = 400
-            key.data.size = min(room_size.x, room_size.y) * 0.25
-            key.data.color = (1, 0.95, 0.85)  # Warm daylight
-            key.rotation_euler = (math.radians(65), 0, math.radians(-30))
-            
-            # Fill light - soft sky light
-            fill_pos = Vector((
-                safe_x_max - room_size.x * 0.25,
-                safe_y_max - room_size.y * 0.25,
-                safe_z_max - 0.8
-            ))
-            bpy.ops.object.light_add(type='AREA', location=fill_pos)
-            fill = context.active_object
-            fill.name = "Fill_Light"
-            fill.data.energy = 200
-            fill.data.size = min(room_size.x, room_size.y) * 0.5  # Larger for softer shadows
-            fill.data.color = (0.85, 0.9, 1)  # Cool sky light
-            fill.rotation_euler = (math.radians(70), 0, math.radians(120))
-            
-            # Ceiling bounce light for ambient fill
-            ceiling_pos = Vector((
-                room_center.x,
-                room_center.y,
-                safe_z_max - 0.1  # Very close to ceiling
-            ))
-            bpy.ops.object.light_add(type='AREA', location=ceiling_pos)
-            ceiling = context.active_object
-            ceiling.name = "Ceiling_Bounce"
-            ceiling.data.energy = 100
-            ceiling.data.size = min(room_size.x, room_size.y) * 0.7  # Very large for soft light
-            ceiling.data.color = (0.98, 0.98, 1)  # Neutral white
-            ceiling.rotation_euler = (math.radians(180), 0, 0)  # Point down
-            
-            # Add practical lights (lamp simulation)
-            lamp_pos1 = Vector((
-                safe_x_min + room_size.x * 0.15,
-                safe_y_min + room_size.y * 0.15,
-                1.2  # Table lamp height
-            ))
-            bpy.ops.object.light_add(type='POINT', location=lamp_pos1)
-            lamp1 = context.active_object
-            lamp1.name = "Table_Lamp_1"
-            lamp1.data.energy = 30
-            lamp1.data.color = (1, 0.9, 0.75)  # Warm incandescent
-            lamp1.data.shadow_soft_size = 0.3
-            
-            # Second practical light
-            lamp_pos2 = Vector((
-                safe_x_max - room_size.x * 0.15,
-                safe_y_max - room_size.y * 0.15,
-                2.2  # Floor lamp height
-            ))
-            bpy.ops.object.light_add(type='POINT', location=lamp_pos2)
-            lamp2 = context.active_object
-            lamp2.name = "Floor_Lamp"
-            lamp2.data.energy = 40
-            lamp2.data.color = (1, 0.95, 0.9)
-            lamp2.data.shadow_soft_size = 0.4
-            
-        else:
-            # Fallback if no room found - use default positions
-            bpy.ops.object.light_add(type='AREA', location=(2, -2, 3))
-            key = context.active_object
-            key.name = "Key_Light"
-            key.data.energy = 500
-            key.data.size = 2
-            key.data.color = (1, 0.95, 0.9)
-            
-            bpy.ops.object.light_add(type='AREA', location=(-2, 1, 2.5))
-            fill = context.active_object
-            fill.name = "Fill_Light"
-            fill.data.energy = 300
-            fill.data.size = 3
-            fill.data.color = (0.9, 0.95, 1)
-            
-            bpy.ops.object.light_add(type='AREA', location=(0, 0, 4))
-            ceiling = context.active_object
-            ceiling.name = "Ceiling_Light"
-            ceiling.data.energy = 200
-            ceiling.data.size = 4
-            ceiling.rotation_euler = (math.radians(180), 0, 0)
-        
-        # Setup world with subtle ambient light
-        world = bpy.data.worlds.new("Interior_World")
+
+        # 1. Main ceiling light (bright interior illumination)
+        bpy.ops.object.light_add(
+            type='AREA',
+            location=(room_center.x, room_center.y, room_max.z - 0.5)
+        )
+        main_light = context.active_object
+        main_light.name = "Main_Ceiling_Light"
+        main_light.data.energy = 200  # Much brighter for interior
+        main_light.data.color = (1, 0.95, 0.85)  # Warm white like indoor lighting
+        main_light.data.size = min(room_size.x * 0.4, 2.5)
+        main_light.data.shape = 'DISK'
+        main_light.rotation_euler = (math.radians(180), 0, 0)  # Point down
+        # Soft shadows are automatic with area lights based on size
+
+        # 2. Secondary ceiling lights for even coverage
+        ceiling_positions = [
+            (room_center.x - room_size.x * 0.25, room_center.y - room_size.y * 0.25, room_max.z - 0.5),
+            (room_center.x + room_size.x * 0.25, room_center.y - room_size.y * 0.25, room_max.z - 0.5),
+            (room_center.x - room_size.x * 0.25, room_center.y + room_size.y * 0.25, room_max.z - 0.5),
+            (room_center.x + room_size.x * 0.25, room_center.y + room_size.y * 0.25, room_max.z - 0.5),
+        ]
+
+        for i, pos in enumerate(ceiling_positions):
+            bpy.ops.object.light_add(type='POINT', location=pos)
+            ceiling_light = context.active_object
+            ceiling_light.name = f"Ceiling_Light_{i+1}"
+            ceiling_light.data.energy = 500  # Bright point lights
+            ceiling_light.data.color = (1, 0.97, 0.9)  # Warm white
+            # Point lights in Cycles automatically have soft shadows
+
+        # 3. Wall wash lights (placed inside room, illuminating walls)
+        wall_positions = [
+            (room_min.x + room_size.x * 0.15, room_center.y, room_center.z),  # Left wall
+            (room_max.x - room_size.x * 0.15, room_center.y, room_center.z),  # Right wall
+            (room_center.x, room_min.y + room_size.y * 0.15, room_center.z),  # Front wall
+            (room_center.x, room_max.y - room_size.y * 0.15, room_center.z),  # Back wall
+        ]
+
+        for i, pos in enumerate(wall_positions):
+            bpy.ops.object.light_add(type='AREA', location=pos)
+            wall_light = context.active_object
+            wall_light.name = f"Wall_Wash_{i+1}"
+            wall_light.data.energy = 100  # Moderate brightness
+            wall_light.data.color = (1, 0.98, 0.95)  # Neutral warm
+            wall_light.data.size = min(room_size.z * 0.5, 2)
+            wall_light.data.shape = 'RECTANGLE'
+            wall_light.data.size_y = min(room_size.z * 0.4, 1.8)
+
+            # Point toward the nearest wall
+            if i == 0:  # Left wall
+                wall_light.rotation_euler = (0, math.radians(90), 0)
+            elif i == 1:  # Right wall
+                wall_light.rotation_euler = (0, math.radians(-90), 0)
+            elif i == 2:  # Front wall
+                wall_light.rotation_euler = (math.radians(90), 0, 0)
+            else:  # Back wall
+                wall_light.rotation_euler = (math.radians(-90), 0, 0)
+
+        # 4. Ambient fill light (soft overall illumination)
+        bpy.ops.object.light_add(
+            type='AREA',
+            location=(room_center.x, room_center.y, room_center.z)
+        )
+        ambient_light = context.active_object
+        ambient_light.name = "Ambient_Fill"
+        ambient_light.data.energy = 50
+        ambient_light.data.color = (1, 1, 1)  # Pure white for neutral fill
+        ambient_light.data.size = min(max(room_size.x, room_size.y) * 0.8, 4)
+        ambient_light.data.shape = 'DISK'
+
+        # 5. Floor uplight for depth (subtle)
+        bpy.ops.object.light_add(
+            type='AREA',
+            location=(room_center.x, room_center.y, room_min.z + 0.2)
+        )
+        floor_light = context.active_object
+        floor_light.name = "Floor_Uplight"
+        floor_light.data.energy = 30
+        floor_light.data.color = (0.9, 0.85, 0.8)  # Warm tone
+        floor_light.data.size = min(room_size.x * 0.3, 1.5)
+        floor_light.data.shape = 'DISK'
+        floor_light.rotation_euler = (0, 0, 0)  # Point up
+
+        # Setup realistic world environment
+        world = bpy.data.worlds.get("World")
+        if not world:
+            world = bpy.data.worlds.new("World")
         scene.world = world
         world.use_nodes = True
-        
-        # Create a more sophisticated world setup
+
         nodes = world.node_tree.nodes
         links = world.node_tree.links
-        
-        # Clear default nodes
         nodes.clear()
-        
-        # Add nodes for realistic ambient lighting
+
+        # Create HDRI-like gradient environment
+        # Texture Coordinate node
+        tex_coord = nodes.new('ShaderNodeTexCoord')
+        tex_coord.location = (-800, 0)
+
+        # Mapping node for gradient direction
+        mapping = nodes.new('ShaderNodeMapping')
+        mapping.location = (-600, 0)
+
+        # Gradient texture for sky
+        gradient = nodes.new('ShaderNodeTexGradient')
+        gradient.location = (-400, 0)
+        gradient.gradient_type = 'SPHERICAL'
+
+        # Color ramp for sky colors
+        color_ramp = nodes.new('ShaderNodeValToRGB')
+        color_ramp.location = (-200, 0)
+        color_ramp.color_ramp.elements[0].position = 0.3
+        color_ramp.color_ramp.elements[0].color = (0.7, 0.85, 1.0, 1)  # Horizon color
+        color_ramp.color_ramp.elements[1].position = 1.0
+        color_ramp.color_ramp.elements[1].color = (0.4, 0.6, 0.9, 1)  # Sky blue
+
+        # Mix with ground color
+        mix_shader = nodes.new('ShaderNodeMixRGB')
+        mix_shader.location = (0, 0)
+        mix_shader.blend_type = 'MIX'
+        mix_shader.inputs['Color2'].default_value = (0.15, 0.12, 0.1, 1)  # Ground color
+
+        # Separate XYZ to detect ground
+        separate_xyz = nodes.new('ShaderNodeSeparateXYZ')
+        separate_xyz.location = (-400, -200)
+
+        # Math node to create ground mask
+        math_less = nodes.new('ShaderNodeMath')
+        math_less.location = (-200, -200)
+        math_less.operation = 'LESS_THAN'
+        math_less.inputs[1].default_value = 0.0
+
+        # Background shader
         background = nodes.new('ShaderNodeBackground')
-        background.inputs['Color'].default_value = (0.05, 0.05, 0.06, 1)  # Very subtle ambient
-        background.inputs['Strength'].default_value = 0.1  # Minimal ambient for realism
-        
-        # Add environment texture node for future HDRI support
-        env_tex = nodes.new('ShaderNodeTexEnvironment')
-        env_tex.location = (-300, 0)
-        
-        # Mix shader to blend HDRI and solid color
-        mix_shader = nodes.new('ShaderNodeMixShader')
-        mix_shader.inputs['Fac'].default_value = 0  # Use solid color by default
-        
+        background.location = (200, 0)
+        background.inputs['Strength'].default_value = 1.0  # Brighter environment for interior
+
         # Output
         output = nodes.new('ShaderNodeOutputWorld')
-        output.location = (200, 0)
-        
-        # Connect nodes
-        links.new(background.outputs['Background'], mix_shader.inputs[1])
-        links.new(mix_shader.outputs['Shader'], output.inputs['Surface'])
-        
-        # Set viewport shading
+        output.location = (400, 0)
+
+        # Connect nodes for realistic sky
+        links.new(tex_coord.outputs['Generated'], mapping.inputs['Vector'])
+        links.new(mapping.outputs['Vector'], gradient.inputs['Vector'])
+        links.new(gradient.outputs['Fac'], color_ramp.inputs['Fac'])
+        links.new(mapping.outputs['Vector'], separate_xyz.inputs['Vector'])
+        links.new(separate_xyz.outputs['Z'], math_less.inputs['Value'])
+        links.new(math_less.outputs['Value'], mix_shader.inputs['Fac'])
+        links.new(color_ramp.outputs['Color'], mix_shader.inputs['Color1'])
+        links.new(mix_shader.outputs['Color'], background.inputs['Color'])
+        links.new(background.outputs['Background'], output.inputs['Surface'])
+
+        # Add volume scatter for atmospheric effect (subtle haze)
+        volume_scatter = nodes.new('ShaderNodeVolumeScatter')
+        volume_scatter.location = (200, -200)
+        volume_scatter.inputs['Color'].default_value = (1, 0.98, 0.95, 1)
+        volume_scatter.inputs['Density'].default_value = 0.001  # Very subtle
+
+        links.new(volume_scatter.outputs['Volume'], output.inputs['Volume'])
+
+        # Set color management for photorealistic look
+        scene.view_settings.view_transform = 'Filmic'
+        scene.view_settings.look = 'None'
+        scene.view_settings.exposure = 0.5
+        scene.view_settings.gamma = 1.0
+
+        # Enable ambient occlusion in Cycles
+        scene.cycles.use_fast_gi = True
+        scene.world.cycles_visibility.scatter = True
+
+        # Set viewport to rendered
         for area in context.screen.areas:
             if area.type == 'VIEW_3D':
                 space = area.spaces[0]
                 space.shading.type = 'RENDERED'
-        
-        self.report({'INFO'}, "Lighting applied")
+                space.overlay.show_overlays = False  # Hide overlays for clean view
+
+        self.report({'INFO'}, "Natural interior lighting applied")
         return {'FINISHED'}
 
 class ENV_OT_import_furniture(Operator):
     bl_idname = "env.import_furniture"
     bl_label = "Import Furniture"
-    bl_description = "Import furniture model"
+    bl_description = "Import furniture model (GLB/GLTF/FBX)"
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
         scene = context.scene
         filepath = scene.env_furniture_path
 
-        if not filepath or not os.path.exists(bpy.path.abspath(filepath)):
-            self.report({'ERROR'}, "Please select a valid model file")
+        # Validate file
+        if not filepath:
+            self.report({'ERROR'}, "Please select a model file")
             return {'CANCELLED'}
 
         filepath = bpy.path.abspath(filepath)
+        if not os.path.exists(filepath):
+            self.report({'ERROR'}, f"File not found: {filepath}")
+            return {'CANCELLED'}
 
-        # Store current objects
-        before = set(context.scene.objects)
+        # Get file extension
+        ext = os.path.splitext(filepath)[1].lower()
 
-        # Import model
-        if filepath.lower().endswith(('.glb', '.gltf')):
-            bpy.ops.import_scene.gltf(filepath=filepath)
-        elif filepath.lower().endswith('.fbx'):
-            bpy.ops.import_scene.fbx(filepath=filepath)
-        elif filepath.lower().endswith('.obj'):
-            bpy.ops.wm.obj_import(filepath=filepath)
+        # Store objects before import
+        before_import = set(context.scene.objects)
 
-        # Get new objects
-        new_objects = list(set(context.scene.objects) - before)
-
-        if new_objects:
-            # Create a collection for this furniture
-            furniture_name = f"Furniture_{os.path.basename(filepath).split('.')[0]}"
-            furniture_collection = bpy.data.collections.new(name=furniture_name)
-            context.scene.collection.children.link(furniture_collection)
-
-            # Find the bounding box of all imported objects BEFORE moving them
-            # This preserves their relative positions
-            combined_min = [float('inf')] * 3
-            combined_max = [float('-inf')] * 3
-
-            for obj in new_objects:
-                if obj.type == 'MESH':
-                    # Get world matrix for this object
-                    world_matrix = obj.matrix_world.copy()
-                    # Get bounding box in world space
-                    for corner in obj.bound_box:
-                        world_co = world_matrix @ Vector(corner)
-                        for i in range(3):
-                            combined_min[i] = min(combined_min[i], world_co[i])
-                            combined_max[i] = max(combined_max[i], world_co[i])
-
-            # Calculate center of the combined bounding box
-            if combined_min[0] != float('inf'):
-                center_x = (combined_min[0] + combined_max[0]) / 2
-                center_y = (combined_min[1] + combined_max[1]) / 2
-                center_z = combined_min[2]  # Use bottom of bounding box
+        # Import based on file type
+        try:
+            if ext in ['.glb', '.gltf']:
+                bpy.ops.import_scene.gltf(filepath=filepath)
+            elif ext == '.fbx':
+                bpy.ops.import_scene.fbx(filepath=filepath)
+            elif ext == '.obj':
+                bpy.ops.wm.obj_import(filepath=filepath)
             else:
-                center_x = center_y = center_z = 0
+                self.report({'ERROR'}, f"Unsupported format: {ext}")
+                return {'CANCELLED'}
+        except Exception as e:
+            self.report({'ERROR'}, f"Import failed: {str(e)}")
+            return {'CANCELLED'}
 
-            # Create furniture parent empty at the center-bottom of all objects
-            bpy.ops.object.empty_add(location=(center_x, center_y, center_z))
-            furniture = context.active_object
-            furniture.name = furniture_name
-            furniture.empty_display_type = 'CUBE'
-            furniture.empty_display_size = 0.5
+        # Get newly imported objects
+        new_objects = list(set(context.scene.objects) - before_import)
 
-            # Store original transforms and parent all objects WITHOUT moving them
-            for obj in new_objects:
-                # Store the world matrix before parenting
-                original_matrix = obj.matrix_world.copy()
+        if not new_objects:
+            self.report({'WARNING'}, "No objects imported")
+            return {'CANCELLED'}
 
-                # Remove from current collections
-                for coll in list(obj.users_collection):
-                    coll.objects.unlink(obj)
+        # Collect all mesh objects and preserve hierarchy
+        all_meshes = []
+        all_objects = []
+        root_objects = []  # Top-level imported objects
+        empties = []  # Track empty objects
 
-                # Add to furniture collection
-                furniture_collection.objects.link(obj)
+        for obj in new_objects:
+            all_objects.append(obj)
+            if obj.parent is None or obj.parent not in new_objects:
+                root_objects.append(obj)
+            if obj.type == 'MESH':
+                all_meshes.append(obj)
+            elif obj.type == 'EMPTY':
+                empties.append(obj)
+            # Also check children
+            for child in obj.children_recursive:
+                if child.type == 'MESH' and child not in all_meshes:
+                    all_meshes.append(child)
+                if child not in all_objects:
+                    all_objects.append(child)
 
-                # Parent to the empty while keeping transform
-                obj.parent = furniture
-                # Restore the world transform to maintain position
-                obj.matrix_world = original_matrix
+        if not all_meshes:
+            self.report({'ERROR'}, "No mesh objects found in imported file")
+            return {'CANCELLED'}
 
-            # Move the parent empty to the collection
-            for coll in list(furniture.users_collection):
-                coll.objects.unlink(furniture)
-            furniture_collection.objects.link(furniture)
-            
-            # Apply scale to the parent (this will scale all children)
-            furniture.scale = (scene.env_furniture_scale,) * 3
-            
-            # Recalculate bounds after scaling to find the actual bottom
-            furniture_min_z = float('inf')
+        # Determine the furniture object based on what was imported
+        furniture_object = None
 
-            for obj in new_objects:
-                if obj.type == 'MESH':
-                    # Update mesh to ensure correct vertex positions
-                    obj.data.update()
-                    # Get world coordinates of all vertices
-                    bbox = [obj.matrix_world @ Vector(corner) for corner in obj.bound_box]
-                    for corner in bbox:
-                        furniture_min_z = min(furniture_min_z, corner.z)
-            
-            # Get room bounds to place furniture inside
-            room_parent = None
-            for obj in bpy.data.objects:
-                if obj.name == "Room_Environment":
-                    room_parent = obj
-                    break
-            
-            if room_parent:
-                # Find room bounds including the actual floor level
-                room_min_x = float('inf')
-                room_max_x = float('-inf')
-                room_min_y = float('inf')
-                room_max_y = float('-inf')
-                room_min_z = float('inf')
-                room_max_z = float('-inf')
-                
-                # Find all room vertices to get bounds
-                all_z_values = []
-                floor_vertices = []  # Store potential floor vertices
-                
-                for child in room_parent.children:
-                    if child.type == 'MESH':
-                        child.data.update()  # Ensure mesh is updated
-                        for vert in child.data.vertices:
-                            world_co = child.matrix_world @ vert.co
-                            room_min_x = min(room_min_x, world_co.x)
-                            room_max_x = max(room_max_x, world_co.x)
-                            room_min_y = min(room_min_y, world_co.y)
-                            room_max_y = max(room_max_y, world_co.y)
-                            room_min_z = min(room_min_z, world_co.z)
-                            room_max_z = max(room_max_z, world_co.z)
-                            all_z_values.append(world_co.z)
-                            
-                            # Store vertices that might be part of the floor
-                            if world_co.z < room_min_z + 0.5:  # Within 0.5 units of minimum
-                                floor_vertices.append(world_co.z)
-                
-                # Detect floor surface more accurately
-                room_height = room_max_z - room_min_z
-                
-                # Method 1: Find the most common Z value in the bottom region (likely the floor)
-                if floor_vertices:
-                    # Round values to handle minor variations
-                    rounded_floor_z = [round(z, 2) for z in floor_vertices]
-                    # Find most common Z value (the actual floor surface)
-                    from collections import Counter
-                    z_counts = Counter(rounded_floor_z)
-                    most_common_z = z_counts.most_common(1)[0][0]
-                    room_floor_z = most_common_z
-                else:
-                    # Method 2: Use percentile approach
-                    all_z_values.sort()
-                    # Find floor surface: vertices in the bottom 10% of room height
-                    floor_threshold = room_min_z + (room_height * 0.1)
-                    floor_surface_z_values = [z for z in all_z_values if z <= floor_threshold]
-                    
-                    if floor_surface_z_values:
-                        # Get the top of the floor (highest point in floor region)
-                        room_floor_z = max(floor_surface_z_values)
-                    else:
-                        # Fallback to absolute minimum if no floor detected
-                        room_floor_z = room_min_z
-                
-                room_center_x = (room_min_x + room_max_x) / 2
-                room_center_y = (room_min_y + room_max_y) / 2
-                
-                # Calculate the offset needed to place furniture on floor
-                furniture_bottom_offset = furniture_min_z - furniture.location.z
+        # Case 1: Single mesh object
+        if len(all_meshes) == 1 and len(root_objects) == 1:
+            furniture_object = all_meshes[0]
+            furniture_object.name = f"Furniture_{os.path.basename(filepath).split('.')[0]}"
 
-                # Place furniture so its actual bottom sits on the floor surface
-                furniture.location.x = room_center_x
-                furniture.location.y = room_center_y
-                # Adjust Z position so the actual bottom sits on floor
-                furniture.location.z = room_floor_z - furniture_bottom_offset
-            else:
-                # Fallback if no room found - place at origin with slight elevation
-                furniture.location = (0, 0, 0.001)
-            
-            # Select for easy positioning
+        # Case 2: Multiple objects or existing empty parent
+        elif len(root_objects) == 1 and root_objects[0].type == 'EMPTY':
+            # Use existing empty parent
+            furniture_object = root_objects[0]
+            furniture_object.name = f"Furniture_{os.path.basename(filepath).split('.')[0]}"
+
+        # Case 3: Multiple root objects - create parent
+        else:
+            # Create a parent empty to group all furniture parts
+            bpy.ops.object.empty_add(location=(0, 0, 0))
+            furniture_parent = context.active_object
+            furniture_parent.name = f"Furniture_{os.path.basename(filepath).split('.')[0]}"
+
+            # Parent all root objects to the new empty, preserving internal hierarchy
+            for obj in root_objects:
+                obj.parent = furniture_parent
+
+            furniture_object = furniture_parent
+
+        # Apply transformations to all mesh objects to get correct dimensions
+        for mesh_obj in all_meshes:
             bpy.ops.object.select_all(action='DESELECT')
-            furniture.select_set(True)
-            context.view_layer.objects.active = furniture
-            
-            self.report({'INFO'}, f"Imported {furniture.name} - Use G to move")
-        
+            mesh_obj.select_set(True)
+            context.view_layer.objects.active = mesh_obj
+            bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+
+        # Calculate real dimensions from all mesh children
+        bounds_min = Vector((float('inf'),) * 3)
+        bounds_max = Vector((float('-inf'),) * 3)
+
+        for mesh_obj in all_meshes:
+            mesh_obj.data.update()
+            for vert in mesh_obj.data.vertices:
+                world_co = mesh_obj.matrix_world @ vert.co
+                for i in range(3):
+                    bounds_min[i] = min(bounds_min[i], world_co[i])
+                    bounds_max[i] = max(bounds_max[i], world_co[i])
+
+        # Original size calculation
+        original_size = bounds_max - bounds_min
+
+        # Determine likely furniture type and auto-scale
+        auto_scale = scene.env_furniture_scale
+
+        # Auto-detect furniture type based on proportions
+        width = original_size.x
+        depth = original_size.y
+        height = original_size.z
+
+        # If dimensions seem wrong (e.g., in cm or mm), auto-correct
+        if max(width, depth, height) > 10:  # Likely in wrong units
+            # Assume it's in cm, convert to meters
+            auto_scale = 0.01
+            self.report({'INFO'}, "Auto-detected centimeter units, converting to meters")
+        elif max(width, depth, height) > 100:  # Likely in mm
+            auto_scale = 0.001
+            self.report({'INFO'}, "Auto-detected millimeter units, converting to meters")
+        elif max(width, depth, height) < 0.1:  # Too small, likely wrong scale
+            auto_scale = 10
+            self.report({'INFO'}, "Model too small, scaling up")
+
+        # Apply user scale on top of auto-scale
+        final_scale = auto_scale * scene.env_furniture_scale
+        furniture_object.scale = (final_scale, final_scale, final_scale)
+
+        # Apply scale to the parent empty
+        bpy.ops.object.select_all(action='DESELECT')
+        furniture_object.select_set(True)
+        context.view_layer.objects.active = furniture_object
+        bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+
+        # Recalculate bounds after scaling from all mesh children
+        bounds_min = Vector((float('inf'),) * 3)
+        bounds_max = Vector((float('-inf'),) * 3)
+
+        for mesh_obj in all_meshes:
+            mesh_obj.data.update()
+            for vert in mesh_obj.data.vertices:
+                world_co = mesh_obj.matrix_world @ vert.co
+                for i in range(3):
+                    bounds_min[i] = min(bounds_min[i], world_co[i])
+                    bounds_max[i] = max(bounds_max[i], world_co[i])
+
+        final_size = bounds_max - bounds_min
+
+        # Store sizes as custom properties
+        furniture_object["original_size_x"] = original_size.x
+        furniture_object["original_size_y"] = original_size.y
+        furniture_object["original_size_z"] = original_size.z
+        furniture_object["final_size_x"] = final_size.x
+        furniture_object["final_size_y"] = final_size.y
+        furniture_object["final_size_z"] = final_size.z
+        furniture_object["auto_scale_applied"] = auto_scale
+
+        # Find room floor level
+        room_parent = None
+        for obj in bpy.data.objects:
+            if obj.name == "Room_Environment":
+                room_parent = obj
+                break
+
+        floor_z = 0  # Default floor level
+        room_center = Vector((0, 0, 0))
+
+        if room_parent:
+            # Find actual floor level from room geometry
+            room_min = Vector((float('inf'),) * 3)
+            room_max = Vector((float('-inf'),) * 3)
+
+            for child in room_parent.children:
+                if child.type == 'MESH':
+                    for vert in child.data.vertices:
+                        world_co = child.matrix_world @ vert.co
+                        room_min = Vector((min(room_min[i], world_co[i]) for i in range(3)))
+                        room_max = Vector((max(room_max[i], world_co[i]) for i in range(3)))
+
+            floor_z = room_min.z
+            room_center = (room_min + room_max) / 2
+            room_center.z = floor_z  # Keep at floor level
+
+        # Position furniture: center in room, sitting on floor
+        furniture_object.location = room_center
+        # Adjust Z so bottom of furniture sits on floor
+        furniture_object.location.z = floor_z - bounds_min.z
+
+        # Clean up only unnecessary empty objects (not part of furniture hierarchy)
+        for obj in new_objects:
+            if obj.type == 'EMPTY' and obj != furniture_object:
+                # Check if this empty has any children or is part of the furniture
+                if not obj.children and obj.parent != furniture_object:
+                    # Safe to remove if it's not connected to anything
+                    bpy.data.objects.remove(obj, do_unlink=True)
+
+        # Report results
+        self.report({'INFO'}, f"Imported: {furniture_object.name}")
+        self.report({'INFO'}, f"Original size: {original_size.x:.3f}m x {original_size.y:.3f}m x {original_size.z:.3f}m")
+        self.report({'INFO'}, f"Final size: {final_size.x:.2f}m W x {final_size.y:.2f}m D x {final_size.z:.2f}m H")
+        self.report({'INFO'}, f"Positioned at floor level (Z={floor_z:.2f})")
+
+        # Guess furniture type
+        if final_size.z > 0.7 and final_size.z < 0.8:
+            self.report({'INFO'}, "➔ Detected: Table/Desk (standard height ~75cm)")
+        elif final_size.z > 0.4 and final_size.z < 0.5:
+            self.report({'INFO'}, "➔ Detected: Chair/Seating (standard seat height ~45cm)")
+        elif final_size.z > 1.8:
+            self.report({'INFO'}, "➔ Detected: Wardrobe/Tall furniture")
+        elif final_size.x > 1.8 and final_size.y > 1.5:
+            self.report({'INFO'}, "➔ Detected: Bed")
+
         return {'FINISHED'}
 
 class ENV_OT_setup_camera(Operator):
@@ -631,10 +720,101 @@ class ENV_OT_adjust_furniture_scale(Operator):
         
         self.report({'INFO'}, f"Scaled furniture by {self.scale_factor}x")
         return {'FINISHED'}
-    
-    def invoke(self, context, event):
-        # Show dialog with scale factor input
-        return context.window_manager.invoke_props_dialog(self)
+
+class ENV_OT_check_size(Operator):
+    bl_idname = "env.check_size"
+    bl_label = "Check Object Size"
+    bl_description = "Display real-world dimensions of selected objects"
+    bl_options = {'REGISTER'}
+
+    def execute(self, context):
+        selected = context.selected_objects
+
+        if not selected:
+            self.report({'ERROR'}, "Please select an object to check size")
+            return {'CANCELLED'}
+
+        for obj in selected:
+            # Check if object has stored size data (for imported furniture)
+            if "original_size_x" in obj and "scaled_size_x" in obj:
+                orig_x = obj["original_size_x"]
+                orig_y = obj["original_size_y"]
+                orig_z = obj["original_size_z"]
+                scaled_x = obj["scaled_size_x"]
+                scaled_y = obj["scaled_size_y"]
+                scaled_z = obj["scaled_size_z"]
+
+                self.report({'INFO'}, f"=== {obj.name} ===")
+                self.report({'INFO'}, f"Original: {orig_x:.3f}m W x {orig_y:.3f}m D x {orig_z:.3f}m H")
+                self.report({'INFO'}, f"Current: {scaled_x:.3f}m W x {scaled_y:.3f}m D x {scaled_z:.3f}m H")
+                self.report({'INFO'}, f"In cm: {scaled_x*100:.1f}cm x {scaled_y*100:.1f}cm x {scaled_z*100:.1f}cm")
+                continue
+
+            # For other objects or meshes, calculate from vertices
+            all_meshes = []
+
+            if obj.type == 'MESH':
+                all_meshes.append(obj)
+            elif obj.type == 'EMPTY':
+                # Check children for meshes
+                for child in obj.children_recursive:
+                    if child.type == 'MESH':
+                        all_meshes.append(child)
+
+            if not all_meshes:
+                self.report({'WARNING'}, f"{obj.name}: No mesh data found")
+                continue
+
+            # Calculate bounding box in world space
+            bounds_min = Vector((float('inf'),) * 3)
+            bounds_max = Vector((float('-inf'),) * 3)
+
+            for mesh_obj in all_meshes:
+                # Ensure mesh is up to date
+                mesh_obj.data.update()
+
+                # Use vertices for more accurate bounds
+                for vert in mesh_obj.data.vertices:
+                    world_co = mesh_obj.matrix_world @ vert.co
+                    for i in range(3):
+                        bounds_min[i] = min(bounds_min[i], world_co[i])
+                        bounds_max[i] = max(bounds_max[i], world_co[i])
+
+            # Calculate dimensions
+            size = bounds_max - bounds_min
+
+            # Apply any scale from parent hierarchy
+            total_scale = Vector((1, 1, 1))
+            current_obj = obj
+            while current_obj:
+                total_scale.x *= current_obj.scale.x
+                total_scale.y *= current_obj.scale.y
+                total_scale.z *= current_obj.scale.z
+                current_obj = current_obj.parent
+
+            # Apply total scale to size
+            width = size.x * total_scale.x
+            depth = size.y * total_scale.y
+            height = size.z * total_scale.z
+
+            # Report dimensions
+            self.report({'INFO'}, f"=== {obj.name} ===")
+            self.report({'INFO'},
+                f"Size: {width:.3f}m W x {depth:.3f}m D x {height:.3f}m H")
+            self.report({'INFO'},
+                f"In cm: {width*100:.1f}cm x {depth*100:.1f}cm x {height*100:.1f}cm")
+
+            # Common furniture size references
+            if height > 0.7 and height < 0.8 and width > 0.5:
+                self.report({'INFO'}, "➔ Typical table/desk height")
+            elif height > 0.4 and height < 0.5 and width > 0.4:
+                self.report({'INFO'}, "➔ Typical chair seat height")
+            elif height > 1.8 and height < 2.2:
+                self.report({'INFO'}, "➔ Typical wardrobe/tall furniture")
+            elif width > 1.8 and width < 2.2 and depth > 1.5:
+                self.report({'INFO'}, "➔ Typical bed size")
+
+        return {'FINISHED'}
 
 
 class ENV_OT_reset_wall_transparency(Operator):
@@ -1428,24 +1608,94 @@ class ENV_OT_export_baked_glb(Operator):
         return {'RUNNING_MODAL'}
 
 
+class ENV_OT_export_furniture(Operator):
+    bl_idname = "env.export_furniture"
+    bl_label = "Export Selected Furniture"
+    bl_description = "Export selected furniture as GLB with proper hierarchy"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    filepath: bpy.props.StringProperty(
+        name="File Path",
+        default="//exported_furniture.glb",
+        subtype='FILE_PATH'
+    )
+
+    def execute(self, context):
+        selected = context.selected_objects
+
+        if not selected:
+            self.report({'ERROR'}, "Please select furniture to export")
+            return {'CANCELLED'}
+
+        # Store original selection
+        original_selection = selected.copy()
+        original_active = context.view_layer.objects.active
+
+        # Select the furniture and all its children
+        bpy.ops.object.select_all(action='DESELECT')
+        for obj in selected:
+            obj.select_set(True)
+            # Also select all children
+            for child in obj.children_recursive:
+                child.select_set(True)
+
+        # Export with proper settings
+        filepath = bpy.path.abspath(self.filepath)
+
+        try:
+            bpy.ops.export_scene.gltf(
+                filepath=filepath,
+                use_selection=True,
+                export_format='GLB',
+                export_texcoords=True,
+                export_normals=True,
+                export_materials='EXPORT',
+                export_attributes=True,
+                export_draco_mesh_compression_enable=False,
+                export_apply=False,  # Don't apply modifiers
+                export_animations=False,
+                export_hierarchy_full_collections=False
+            )
+            self.report({'INFO'}, f"Exported furniture to: {filepath}")
+        except Exception as e:
+            self.report({'ERROR'}, f"Export failed: {str(e)}")
+            return {'CANCELLED'}
+
+        # Restore selection
+        bpy.ops.object.select_all(action='DESELECT')
+        for obj in original_selection:
+            obj.select_set(True)
+        context.view_layer.objects.active = original_active
+
+        return {'FINISHED'}
+
+    def invoke(self, context, event):
+        # Auto-generate filename based on selection
+        if context.selected_objects:
+            obj_name = context.selected_objects[0].name.replace("Furniture_", "")
+            self.filepath = f"//exported_{obj_name}.glb"
+        context.window_manager.fileselect_add(self)
+        return {'RUNNING_MODAL'}
+
+
 class ENV_OT_render_snapshot(Operator):
     bl_idname = "env.render_snapshot"
     bl_label = "Render Snapshot"
     bl_description = "Render current view"
     bl_options = {'REGISTER'}
-    
+
     def execute(self, context):
         if not context.scene.camera:
             self.report({'ERROR'}, "Please setup camera first")
             return {'CANCELLED'}
-        
+
         # Render settings
         context.scene.render.resolution_x = 1920
         context.scene.render.resolution_y = 1080
-        
+
         # Start render
         bpy.ops.render.render('INVOKE_DEFAULT')
-        
+
         return {'FINISHED'}
 
 
@@ -1456,10 +1706,12 @@ def register():
     bpy.utils.register_class(ENV_OT_setup_camera)
     bpy.utils.register_class(ENV_OT_recenter_origin)
     bpy.utils.register_class(ENV_OT_adjust_furniture_scale)
+    bpy.utils.register_class(ENV_OT_check_size)
     bpy.utils.register_class(ENV_OT_reset_wall_transparency)
     bpy.utils.register_class(ENV_OT_apply_dynamic_transparency)
     bpy.utils.register_class(ENV_OT_prepare_for_spline)
     bpy.utils.register_class(ENV_OT_export_baked_glb)
+    bpy.utils.register_class(ENV_OT_export_furniture)
     bpy.utils.register_class(ENV_OT_before_after_snapshot)
     bpy.utils.register_class(ENV_OT_save_template)
     bpy.utils.register_class(ENV_OT_load_template)
@@ -1470,10 +1722,12 @@ def unregister():
     bpy.utils.unregister_class(ENV_OT_load_template)
     bpy.utils.unregister_class(ENV_OT_save_template)
     bpy.utils.unregister_class(ENV_OT_before_after_snapshot)
+    bpy.utils.unregister_class(ENV_OT_export_furniture)
     bpy.utils.unregister_class(ENV_OT_export_baked_glb)
     bpy.utils.unregister_class(ENV_OT_prepare_for_spline)
     bpy.utils.unregister_class(ENV_OT_apply_dynamic_transparency)
     bpy.utils.unregister_class(ENV_OT_reset_wall_transparency)
+    bpy.utils.unregister_class(ENV_OT_check_size)
     bpy.utils.unregister_class(ENV_OT_adjust_furniture_scale)
     bpy.utils.unregister_class(ENV_OT_recenter_origin)
     bpy.utils.unregister_class(ENV_OT_setup_camera)
